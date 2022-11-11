@@ -23,7 +23,7 @@ target_link_options(BetterSunshineModule PUBLIC ${SMS_LINK_FLAGS})
 
 list(APPEND BETTER_MODULE_CONFIG_DEFINES "KURIBO_NO_TYPES" "BETTER_MOVESET_VERSION=\"v1.0\"")
 
-target_compile_definitions(BetterSunshineModule PUBLIC ${BETTER_MOVESET_CONFIG_DEFINES})
+target_compile_definitions(BetterSunshineModule PUBLIC ${BETTER_MODULE_CONFIG_DEFINES})
 
 add_custom_target(${PROJECT_NAME}.kxe ALL DEPENDS ${PROJECT_NAME})
 add_custom_command(
