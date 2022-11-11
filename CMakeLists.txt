@@ -21,7 +21,7 @@ target_include_directories(Randomizer PUBLIC "include")
 target_compile_options(Randomizer PUBLIC ${SMS_COMPILE_FLAGS})
 target_link_options(Randomizer PUBLIC ${SMS_LINK_FLAGS})
 
-list(APPEND BETTER_MOVESET_CONFIG_DEFINES "KURIBO_NO_TYPES" "BETTER_MOVESET_VERSION=\"v1.0\"")
+list(APPEND BETTER_MODULE_CONFIG_DEFINES "KURIBO_NO_TYPES" "BETTER_MOVESET_VERSION=\"v1.0\"")
 
 target_compile_definitions(Randomizer PUBLIC ${BETTER_MOVESET_CONFIG_DEFINES})
 
