@@ -11,12 +11,18 @@
 
 #include <BetterSMS/game.hxx>
 #include <BetterSMS/module.hxx>
+#include <BetterSMS/player.hxx>
 #include <BetterSMS/stage.hxx>
 #include <BetterSMS/loading.hxx>
 #include <BetterSMS/settings.hxx>
 #include <BetterSMS/icons.hxx>
 
+#include "settings.hxx"
+
+extern void initActorInfoMap(TMarDirector *);
 extern void initMapLoadStatus(TMarDirector *);
+extern void initGameSeed(TApplication *);
+extern void setPlayerInitialHealth(TMario *player, bool isMario);
 
 // Module definition
 
@@ -24,28 +30,37 @@ static void initModule() {
     OSReport("Initializing Randomizer...\n");
 
     // Register callbacks
+    BetterSMS::Game::registerOnBootCallback("Randomizer_InitGameSeed", initGameSeed);
+    BetterSMS::Stage::registerInitCallback("Randomizer_MapLoadActorInit", initActorInfoMap);
     BetterSMS::Stage::registerInitCallback("Randomizer_MapLoadStatusInit", initMapLoadStatus);
+    BetterSMS::Player::registerInitProcess("Randomizer_PlayerHealthInit", setPlayerInitialHealth);
 
-    //// Register settings
-    //sXSpeedSetting.setValueRange({-10, 10, 1});
-    //sYSpeedSetting.setValueRange({-10, 10, 1});
-    //sSettingsGroup.addSetting(&sXSpeedSetting);
-    //sSettingsGroup.addSetting(&sYSpeedSetting);
-    //{
-    //    auto &saveInfo        = sSettingsGroup.getSaveInfo();
-    //    saveInfo.mSaveName    = sSettingsGroup.getName();
-    //    saveInfo.mBlocks      = 1;
-    //    saveInfo.mGameCode    = 'GMSB';
-    //    saveInfo.mCompany     = 0x3031;  // '01'
-    //    saveInfo.mBannerFmt   = CARD_BANNER_CI;
-    //    saveInfo.mBannerImage = GetResourceTextureHeader(sSaveBnr);
-    //    saveInfo.mIconFmt     = CARD_ICON_CI;
-    //    saveInfo.mIconSpeed   = CARD_SPEED_SLOW;
-    //    saveInfo.mIconCount   = 2;
-    //    saveInfo.mIconTable   = GetResourceTextureHeader(sSaveIcon);
-    //    saveInfo.mSaveGlobal  = true;
-    //}
-    //BetterSMS::Settings::registerGroup("Demo Module", &sSettingsGroup);
+    // Register settings
+    gSettingsGroup.addSetting(&gGameSeedSetting);
+    gSettingsGroup.addSetting(&gRandomizeCollectiblesSetting);
+    gSettingsGroup.addSetting(&gRandomizeObjectsSetting);
+    gSettingsGroup.addSetting(&gRandomizeEnemiesSetting);
+    gSettingsGroup.addSetting(&gRandomizeWarpsSetting);
+    gSettingsGroup.addSetting(&gRandomizeScaleSetting);
+    gSettingsGroup.addSetting(&gRandomizeColorsSetting);
+    gSettingsGroup.addSetting(&gRandomizeMusicSetting);
+    gSettingsGroup.addSetting(&gRandomizeExStageSetting);
+    gSettingsGroup.addSetting(&gRandomizeHPDamageSetting);
+    {
+        auto &saveInfo        = gSettingsGroup.getSaveInfo();
+        saveInfo.mSaveName    = gSettingsGroup.getName();
+        saveInfo.mBlocks      = 1;
+        saveInfo.mGameCode    = 'GMSB';
+        saveInfo.mCompany     = 0x3031;  // '01'
+        saveInfo.mBannerFmt   = CARD_BANNER_CI;
+        saveInfo.mBannerImage = GetResourceTextureHeader(gSaveBnr);
+        saveInfo.mIconFmt     = CARD_ICON_CI;
+        saveInfo.mIconSpeed   = CARD_SPEED_SLOW;
+        saveInfo.mIconCount   = 2;
+        saveInfo.mIconTable   = GetResourceTextureHeader(gSaveIcon);
+        saveInfo.mSaveGlobal  = false;
+    }
+    BetterSMS::Settings::registerGroup("Randomizer", &gSettingsGroup);
 }
 
 static void deinitModule() {
