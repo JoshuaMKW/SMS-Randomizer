@@ -26,6 +26,8 @@ extern void setPlayerInitialHealth(TMario *player, bool isMario);
 
 // Module definition
 
+BetterSMS::ModuleInfo sModuleInfo{"Randomizer", 1, 0, &gSettingsGroup};
+
 static void initModule() {
     OSReport("Initializing Randomizer...\n");
 
@@ -60,7 +62,9 @@ static void initModule() {
         saveInfo.mIconTable   = GetResourceTextureHeader(gSaveIcon);
         saveInfo.mSaveGlobal  = false;
     }
-    BetterSMS::Settings::registerGroup("Randomizer", &gSettingsGroup);
+
+    // Register module
+    BetterSMS::registerModule("Randomizer", &sModuleInfo);
 }
 
 static void deinitModule() {

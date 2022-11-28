@@ -10,18 +10,22 @@
 
 struct HitActorInfo {
     bool mShouldRandomize     : 1;
-    bool mIsUnderwaterValid   : 1;
-    bool mIsWaterValid        : 1;
     bool mIsGroundValid       : 1;
-    bool mIsWallBound         : 1;
+    bool mIsRoofValid         : 1;
+    bool mIsWallValid         : 1;
+    bool mIsWaterValid        : 1;
+    bool mIsUnderwaterValid   : 1;
+    bool mIsSurfaceBound      : 1;
     bool mIsChangeStageObj    : 1;
     bool mIsItemObj           : 1;
+    bool mIsSprayableObj      : 1;
     bool mShouldResizeUniform : 1;
     bool mShouldResizeY       : 1;
     bool mShouldResizeXZ      : 1;
     bool mShouldRotateY       : 1;
     bool mShouldRotateXZ      : 1;
-    s16 mFromGroundHeight;
+    s16 mFromSurfaceDist   = 0;
+    TVec3s mAdjustRotation;
 };
 
 HitActorInfo *getRandomizerInfo(THitActor *actor);

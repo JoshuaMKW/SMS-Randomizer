@@ -14,7 +14,7 @@
 
 static THitActor *collectHitActor(THitActor *actor) {
     HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 0;
+    actorInfo->mFromSurfaceDist    = 0;
     actorInfo->mShouldRandomize     = gRandomizeObjectsSetting.getBool();
     actorInfo->mIsItemObj           = false;
     actorInfo->mIsUnderwaterValid   = false;
@@ -33,7 +33,7 @@ SMS_PATCH_BL(SMS_PORT_REGION(0x80223F74, 0, 0, 0), collectHitActor);
 
 static TMapObjGeneral *collectMapObjGeneral(TMapObjGeneral *actor) {
     HitActorInfo *actorInfo = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 0;
+    actorInfo->mFromSurfaceDist    = 0;
     actorInfo->mShouldRandomize     = gRandomizeObjectsSetting.getBool();
     actorInfo->mIsItemObj           = false;
     actorInfo->mIsUnderwaterValid   = false;

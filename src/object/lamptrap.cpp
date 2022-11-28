@@ -19,7 +19,7 @@ static void *collectLampTraps(void *vtable) {
     *(void **)actor = vtable;
 
     HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = -2000;
+    actorInfo->mFromSurfaceDist    = -2000;
     actorInfo->mShouldRandomize     = gRandomizeObjectsSetting.getBool();
     actorInfo->mIsItemObj           = false;
     actorInfo->mIsUnderwaterValid   = true;

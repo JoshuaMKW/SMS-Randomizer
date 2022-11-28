@@ -20,7 +20,7 @@ static void *collectItem(void *vtable) {
     *(void **)actor = vtable;
 
     HitActorInfo *actorInfo = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 0;
+    actorInfo->mFromSurfaceDist     = 0;
     actorInfo->mShouldRandomize     = gRandomizeCollectiblesSetting.getBool();
     actorInfo->mIsItemObj           = true;
     actorInfo->mIsUnderwaterValid   = true;
@@ -35,23 +35,6 @@ static void *collectItem(void *vtable) {
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x801BEE34, 0, 0, 0), collectItem);
 
-static void collectItemLoad(TItem *actor, JSUMemoryInputStream &in) {
-    HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 0;
-    actorInfo->mShouldRandomize     = gRandomizeCollectiblesSetting.getBool();
-    actorInfo->mIsItemObj           = true;
-    actorInfo->mIsUnderwaterValid   = true;
-    actorInfo->mIsWaterValid        = true;
-    actorInfo->mIsGroundValid       = true;
-    actorInfo->mShouldResizeUniform = true;
-    actorInfo->mShouldResizeY       = false;
-    actorInfo->mShouldResizeXZ      = false;
-    actorInfo->mShouldRotateY       = true;
-    actorInfo->mShouldRotateXZ      = false;
-    load__11TMapObjBaseFR20JSUMemoryInputStream(actor, &in);
-}
-//SMS_PATCH_BL(SMS_PORT_REGION(0x801BEE7C, 0, 0, 0), collectItemLoad);
-
 static void *collectCoin(void *vtable) {
     TItem *actor;
     SMS_FROM_GPR(31, actor);
@@ -59,7 +42,7 @@ static void *collectCoin(void *vtable) {
     *(void **)actor = vtable;
 
     HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 0;
+    actorInfo->mFromSurfaceDist     = 0;
     actorInfo->mShouldRandomize     = gRandomizeCollectiblesSetting.getBool();
     actorInfo->mIsItemObj           = true;
     actorInfo->mIsUnderwaterValid   = true;
@@ -82,7 +65,7 @@ static void *collectCoinBlue(void *vtable) {
     *(void **)actor = vtable;
 
     HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 0;
+    actorInfo->mFromSurfaceDist     = 0;
     actorInfo->mShouldRandomize     = gRandomizeCollectiblesSetting.getBool();
     actorInfo->mIsItemObj           = true;
     actorInfo->mIsUnderwaterValid   = true;
@@ -105,7 +88,7 @@ static void *collectCoinRed(void *vtable) {
     *(void **)actor = vtable;
 
     HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 0;
+    actorInfo->mFromSurfaceDist     = 0;
     actorInfo->mShouldRandomize     = gRandomizeCollectiblesSetting.getBool();
     actorInfo->mIsItemObj           = true;
     actorInfo->mIsUnderwaterValid   = true;
@@ -125,7 +108,7 @@ static TMapObjBase *collect1up(TMapObjBase *actor, const char *name) {
     __ct__11TMapObjBaseFPCc(actor, name);
 
     HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 0;
+    actorInfo->mFromSurfaceDist     = 0;
     actorInfo->mShouldRandomize     = gRandomizeCollectiblesSetting.getBool();
     actorInfo->mIsItemObj           = true;
     actorInfo->mIsUnderwaterValid   = true;
@@ -148,7 +131,7 @@ static void *collectShine(void *vtable) {
     *(void **)actor = vtable;
 
     HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 300;
+    actorInfo->mFromSurfaceDist     = 300;
     actorInfo->mShouldRandomize     = gRandomizeCollectiblesSetting.getBool();
     actorInfo->mIsItemObj           = true;
     actorInfo->mIsUnderwaterValid   = false;

@@ -4,7 +4,6 @@
 #include <SMS/Map/MapCollisionData.hxx>
 #include <SMS/MapObj/MapObjGeneral.hxx>
 #include <SMS/MoveBG/Item.hxx>
-#include <SMS/MoveBG/NozzleBox.hxx>
 #include <SMS/macros.h>
 #include <SMS/raw_fn.hxx>
 
@@ -13,22 +12,29 @@
 #include "actorinfo.hxx"
 #include "settings.hxx"
 
-static void *collectNozzleBox(void *vtable) {
-    TNozzleBox *actor;
-    SMS_FROM_GPR(31, actor);
+static TBaseNPC *collectNPC(TBaseNPC *actor, const char *name) {
+    u32 id;
+    SMS_FROM_GPR(29, id);
+
+    __ct__11TSpineEnemyFPCc(actor, name);
 
     HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromGroundHeight    = 0;
-    actorInfo->mShouldRandomize     = gRandomizeCollectiblesSetting.getBool();
+    actorInfo->mFromSurfaceDist    = 0;
+    if (id == 0x4000018 && gpMarDirector->mAreaID == 1 &&
+        gpMarDirector->mEpisodeID == 1)
+        actorInfo->mShouldRandomize = false;
+    else
+        actorInfo->mShouldRandomize = true;
     actorInfo->mIsItemObj           = false;
     actorInfo->mIsUnderwaterValid   = false;
     actorInfo->mIsWaterValid        = false;
     actorInfo->mIsGroundValid       = true;
     actorInfo->mShouldResizeUniform = true;
-    actorInfo->mShouldResizeY       = true;
-    actorInfo->mShouldResizeXZ      = true;
+    actorInfo->mShouldResizeY       = false;
+    actorInfo->mShouldResizeXZ      = false;
     actorInfo->mShouldRotateY       = true;
     actorInfo->mShouldRotateXZ      = false;
-    return vtable;
+
+    return actor;
 }
-SMS_PATCH_BL(SMS_PORT_REGION(0x801BB220, 0, 0, 0), collectNozzleBox);
+SMS_PATCH_BL(SMS_PORT_REGION(0x80208090, 0, 0, 0), collectNPC);
