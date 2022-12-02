@@ -2,6 +2,9 @@
 
 #include <JSystem/JDrama/JDRActor.hxx>
 #include <JSystem/JDrama/JDRNameRefGen.hxx>
+#include <JSystem/JGeometry/JGMQuat.hxx>
+#include <JSystem/JGeometry/JGMRotation.hxx>
+#include <JSystem/JGeometry/JGMVec.hxx>
 
 #include <SMS/rand.h>
 #include <SMS/raw_fn.hxx>
@@ -33,6 +36,36 @@ static f32 getAreaOfTriangle(const TVectorTriangle& triangle) {
 
     const f32 sP = (lengthA + lengthB + lengthC) / 2.0f;
     return sqrtf(sP * (sP - lengthA) * (sP - lengthB) * (sP - lengthC));
+}
+
+static void rotateWithNormal(const TVec3f& normal, TVec3f& out) {
+    using namespace JGeometry;
+
+    TQuat4f quat;
+    TVec3f up = TVec3f::up();
+
+    //TRotation3<TMatrix34<SMatrix34<f32>>> rotation;
+    ////rotation.setLookDir(normal, TVec3f::up());
+    //setLookDir__Q29JGeometry64TRotation3_Q(&rotation, &normal, &up);
+
+    Mtx mtx;
+    TVec3f origin = {0, 0, 0};
+    C_MTXLookAt(mtx, origin, up, normal);
+
+    /*out.z = radiansToAngle(atan2f(mtx[1][0], mtx[0][0]));
+    out.y = radiansToAngle(atan2f(-mtx[2][0], sqrtf(1.0f - mtx[2][0] * mtx[2][0])));
+    out.x = radiansToAngle(atan2f(mtx[2][1], mtx[2][2]));*/
+
+    f32 sy = sqrtf(mtx[2][1] * mtx[2][1] + mtx[2][0] * mtx[2][0]);
+    if (sy < 10 * __FLT_EPSILON__) {
+        out.x = radiansToAngle(atan2f(mtx[2][1], mtx[2][0]));
+        out.y = radiansToAngle(atan2f(sy, mtx[2][2]));
+        out.z = 0;
+    } else {
+        out.x = radiansToAngle(atan2f(mtx[2][1], mtx[2][0]));
+        out.y = radiansToAngle(atan2f(sy, mtx[2][2]));
+        out.z = radiansToAngle(atan2f(mtx[1][2], -mtx[0][2]));
+    }
 }
 
 bool isContextRandomizable(const TMarDirector &director, const HitActorInfo &actorInfo, const THitActor &actor) {
@@ -482,12 +515,16 @@ static bool getRandomizedFloorPosition(TVec3f &outPos, TVec3f &outRot, TVec3f &o
     }
 
     if (actorInfo.mIsSurfaceBound) {
-        outRot.set(radiansToAngle(atan2f(floor->mNormal.z, floor->mNormal.y)) +
+        /*outRot.set(radiansToAngle(atan2f(floor->mNormal.z, floor->mNormal.y)) +
                        actorInfo.mAdjustRotation.x,
                    radiansToAngle(atan2f(floor->mNormal.x, floor->mNormal.z)) +
                        actorInfo.mAdjustRotation.y,
                    radiansToAngle(atan2f(floor->mNormal.y, floor->mNormal.x)) +
-                       actorInfo.mAdjustRotation.z);
+                       actorInfo.mAdjustRotation.z);*/
+        rotateWithNormal(floor->mNormal, outRot);
+        /*outRot.x += actorInfo.mAdjustRotation.x;
+        outRot.y += actorInfo.mAdjustRotation.y;
+        outRot.z += actorInfo.mAdjustRotation.z;*/
     } else {
         getRandomizedRotation(outRot, actorInfo);
     }
@@ -548,10 +585,14 @@ static bool getRandomizedWallPosition(TVec3f &outPos, TVec3f &outRot, TVec3f &ou
     outPos.add(scaledNormal);
 
     if (actorInfo.mIsSurfaceBound) {
-        outRot.set(actorInfo.mAdjustRotation.x,
+        /*outRot.set(actorInfo.mAdjustRotation.x,
                    radiansToAngle(atan2f(floor->mNormal.x, floor->mNormal.z)) +
                        actorInfo.mAdjustRotation.y,
-                   actorInfo.mAdjustRotation.z);
+                   actorInfo.mAdjustRotation.z);*/
+        rotateWithNormal(wall->mNormal, outRot);
+        /*outRot.x += actorInfo.mAdjustRotation.x;
+        outRot.y += actorInfo.mAdjustRotation.y;
+        outRot.z += actorInfo.mAdjustRotation.z;*/
     } else {
         getRandomizedRotation(outRot, actorInfo);
     }

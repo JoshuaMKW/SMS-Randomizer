@@ -125,7 +125,7 @@ static TMapObjBase *collect1up(TMapObjBase *actor, const char *name) {
 SMS_PATCH_BL(SMS_PORT_REGION(0x801FE2B4, 0, 0, 0), collect1up);
 
 static void *collectShine(void *vtable) {
-    TItem *actor;
+    TShine *actor;
     SMS_FROM_GPR(31, actor);
 
     *(void **)actor = vtable;
