@@ -59,7 +59,7 @@ static void rotateWithNormal(const TVec3f& normal, TVec3f& out) {
     {
         const TVec3f up     = TVec3f::up();
         const TVec3f origin = TVec3f::zero();
-        C_MTXLookAt(mtx, origin, up, normal);
+        C_MTXLookAt(mtx, normal, up, origin);
     }
 
     out.setRotation(mtx);
