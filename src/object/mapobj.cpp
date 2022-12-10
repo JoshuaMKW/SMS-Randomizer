@@ -2,6 +2,7 @@
 #include <Dolphin/types.h>
 #include <JSystem/JSupport/JSUMemoryStream.hxx>
 
+#include <SMS/Manager/LiveManager.hxx>
 #include <SMS/Map/MapCollisionData.hxx>
 #include <SMS/MapObj/MapObjGeneral.hxx>
 #include <SMS/MoveBG/Item.hxx>
@@ -24,12 +25,14 @@ static bool isMarioRandomizable(const TMarDirector &director, const TMario *acto
 #define STR_EQUAL(a, b) strcmp(a, b) == 0
 
 static THitActor *collectGeneralActors(const TMarNameRefGen *gen, const char *name) {
-    auto *actor            = reinterpret_cast<THitActor *>(gen->getNameRef(name));
+    auto *actor = reinterpret_cast<THitActor *>(gen->getNameRef(name));
 
     HitActorInfo *actorInfo     = getRandomizerInfo(actor);
     actorInfo->mShouldRandomize = true;
 
-    if (STR_EQUAL(name, "MapObjSmoke")) {  // Delfino Plaza
+    if (STR_EQUAL(name, "MapObjBase")) {
+        auto *mapobj = reinterpret_cast<TMapObjBase *>(actor);
+    } else if (STR_EQUAL(name, "MapObjSmoke")) {  // Delfino Plaza
         actorInfo->mShouldRandomize = false;
     } else if (STR_EQUAL(name, "MapObjFlag")) {
         actorInfo->mShouldRandomize = false;
@@ -42,36 +45,67 @@ static THitActor *collectGeneralActors(const TMarNameRefGen *gen, const char *na
         actorInfo->mIsGroundValid     = false;
         actorInfo->mIsWaterValid      = true;
         actorInfo->mIsUnderwaterValid = false;
+    } else if (STR_EQUAL(name, "OrangeSeal")) {
+        actorInfo->mShouldRandomize   = true;
+        actorInfo->mIsGroundValid     = true;
+        actorInfo->mIsWallValid       = true;
+        actorInfo->mIsSurfaceBound    = true;
+        actorInfo->mIsWaterValid      = false;
+        actorInfo->mIsUnderwaterValid = false;
+        actorInfo->mAdjustRotation    = {90, 0, 0};
     } else if (STR_EQUAL(name, "MapStaticObj")) {
         actorInfo->mShouldRandomize = false;
     } else if (STR_EQUAL(name, "WoodBox")) {
         actorInfo->mShouldRandomize     = true;
         actorInfo->mShouldResizeUniform = true;
     } else if (STR_EQUAL(name, "JellyGate")) {
-        actorInfo->mShouldRandomize = gRandomizeObjectsSetting.getBool();
-        actorInfo->mFromSurfaceDist = 5;
-        actorInfo->mAdjustRotation  = {0, 0, 0};
-        actorInfo->mShouldRotateXZ  = true;
-        actorInfo->mShouldRotateY   = true;
-        actorInfo->mIsWallValid     = true;
-        actorInfo->mIsSurfaceBound  = true;
+        actorInfo->mShouldRandomize   = gRandomizeObjectsSetting.getBool();
+        actorInfo->mFromSurfaceDist   = 5;
+        actorInfo->mAdjustRotation    = {0, 0, 0};
+        actorInfo->mShouldRotateXZ    = true;
+        actorInfo->mShouldRotateY     = true;
+        actorInfo->mIsGroundValid     = true;
+        actorInfo->mIsWaterValid      = false;
+        actorInfo->mIsUnderwaterValid = false;
+        actorInfo->mIsRoofValid       = true;
+        actorInfo->mIsWallValid       = true;
+        actorInfo->mIsSurfaceBound    = true;
     } else if (STR_EQUAL(name, "Billboard")) {
-        actorInfo->mShouldRandomize = gRandomizeObjectsSetting.getBool();
-        actorInfo->mFromSurfaceDist = 0;
-        actorInfo->mAdjustRotation  = {0, 90, 0};
-        actorInfo->mShouldRotateXZ  = true;
-        actorInfo->mShouldRotateY   = true;
-        actorInfo->mIsWallValid     = true;
-        actorInfo->mIsSurfaceBound  = true;
+        actorInfo->mShouldRandomize   = gRandomizeObjectsSetting.getBool();
+        actorInfo->mFromSurfaceDist   = 0;
+        actorInfo->mAdjustRotation    = {0, 90, 0};
+        actorInfo->mShouldRotateXZ    = true;
+        actorInfo->mShouldRotateY     = true;
+        actorInfo->mIsGroundValid     = false;
+        actorInfo->mIsWaterValid      = false;
+        actorInfo->mIsUnderwaterValid = false;
+        actorInfo->mIsWallValid       = true;
+        actorInfo->mIsRoofValid       = false;
+        actorInfo->mIsSurfaceBound    = true;
     } else if (STR_EQUAL(name, "MonumentShine")) {
-        actorInfo->mShouldRandomize = true;
-        actorInfo->mFromSurfaceDist = 900;
+        actorInfo->mShouldRandomize   = true;
+        actorInfo->mIsGroundValid     = false;
+        actorInfo->mIsWaterValid      = false;
+        actorInfo->mIsUnderwaterValid = false;
+        actorInfo->mIsRoofValid       = true;
+        actorInfo->mIsWallValid       = false;
+        actorInfo->mFromSurfaceDist = 300;
     } else if (STR_EQUAL(name, "BellDolpicTV")) {
-        actorInfo->mShouldRandomize  = true;
-        actorInfo->mFromSurfaceDist = 800;
+        actorInfo->mShouldRandomize   = true;
+        actorInfo->mIsGroundValid     = false;
+        actorInfo->mIsWaterValid      = false;
+        actorInfo->mIsUnderwaterValid = false;
+        actorInfo->mIsRoofValid       = true;
+        actorInfo->mIsWallValid       = false;
+        //actorInfo->mFromSurfaceDist = 800;
     } else if (STR_EQUAL(name, "BellDolpicPolice")) {
-        actorInfo->mShouldRandomize  = true;
-        actorInfo->mFromSurfaceDist = 800;
+        actorInfo->mShouldRandomize   = true;
+        actorInfo->mIsGroundValid     = false;
+        actorInfo->mIsWaterValid      = false;
+        actorInfo->mIsUnderwaterValid = false;
+        actorInfo->mIsRoofValid       = true;
+        actorInfo->mIsWallValid       = false;
+        //actorInfo->mFromSurfaceDist = 800;
     } else if (STR_EQUAL(name, "DemoCannon")) {
         actorInfo->mShouldRandomize = false;
     } else if (STR_EQUAL(name, "DokanGate")) {
@@ -172,6 +206,8 @@ static THitActor *collectGeneralActors(const TMarNameRefGen *gen, const char *na
         actorInfo->mAdjustRotation  = {0, 0, 0};
         actorInfo->mShouldRotateXZ  = true;
         actorInfo->mShouldRotateY   = true;
+        actorInfo->mIsGroundValid   = true;
+        actorInfo->mIsRoofValid     = true;
         actorInfo->mIsWallValid     = true;
         actorInfo->mIsSurfaceBound  = true;
         actorInfo->mIsSprayableObj  = true;
@@ -181,6 +217,8 @@ static THitActor *collectGeneralActors(const TMarNameRefGen *gen, const char *na
         actorInfo->mAdjustRotation  = {0, 0, 0};
         actorInfo->mShouldRotateXZ  = true;
         actorInfo->mShouldRotateY   = true;
+        actorInfo->mIsGroundValid   = true;
+        actorInfo->mIsRoofValid     = true;
         actorInfo->mIsWallValid     = true;
         actorInfo->mIsSurfaceBound  = true;
         actorInfo->mIsSprayableObj  = true;
@@ -220,6 +258,16 @@ static THitActor *collectGeneralActors(const TMarNameRefGen *gen, const char *na
         actorInfo->mFromSurfaceDist   = 0;
     } else if (STR_EQUAL(name, "MuddyBoat")) {
         actorInfo->mShouldRandomize = false;
+    } else if (STR_EQUAL(name, "Umaibou")) {
+        actorInfo->mIsExLinear = true;
+    } else if (STR_EQUAL(name, "RedCoinSwitch")) {
+        actorInfo->mShouldRandomize = true;
+        actorInfo->mIsSurfaceBound  = true;
+        actorInfo->mIsSwitchObj     = true;
+    } else if (STR_EQUAL(name, "MapObjSwitch")) {
+        actorInfo->mShouldRandomize = true;
+        actorInfo->mIsSurfaceBound  = true;
+        actorInfo->mIsSwitchObj     = true;
     } else if (STR_EQUAL(name, "NozzleBox")) {
         actorInfo->mShouldRandomize     = true;
         actorInfo->mIsGroundValid       = true;
@@ -330,3 +378,11 @@ static void *collectBellWatermill(void *vtable) {
     return vtable;
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x801C4B0C, 0, 0, 0), collectBellWatermill);
+
+static bool clipActorsScaled(JDrama::TGraphics *graphics, const Vec *point, f32 radius) {
+    TLiveActor *actor;
+    SMS_FROM_GPR(31, actor);
+    
+    return ViewFrustumClipCheck__FPQ26JDrama9TGraphicsP3Vecf(
+        graphics, point, radius * Max(Max(actor->mSize.x, actor->mSize.y), actor->mSize.z));
+} SMS_PATCH_BL(SMS_PORT_REGION(0x8021B144, 0, 0, 0), clipActorsScaled);

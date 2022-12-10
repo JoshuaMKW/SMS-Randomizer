@@ -134,6 +134,7 @@ static void *collectShine(void *vtable) {
     actorInfo->mFromSurfaceDist     = 300;
     actorInfo->mShouldRandomize     = gRandomizeCollectiblesSetting.getBool();
     actorInfo->mIsItemObj           = true;
+    actorInfo->mIsShineObj          = true;
     actorInfo->mIsUnderwaterValid   = false;
     actorInfo->mIsWaterValid        = false;
     actorInfo->mIsGroundValid       = true;

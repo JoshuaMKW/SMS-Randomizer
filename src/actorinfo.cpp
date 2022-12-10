@@ -17,10 +17,14 @@ HitActorInfo *getRandomizerInfo(THitActor *actor) {
         info->mIsRoofValid         = false;
         info->mIsWallValid         = false;
         info->mIsWaterValid        = false;
+        info->mIsPlayer            = false;
         info->mIsItemObj           = false;
+        info->mIsShineObj          = false;
         info->mIsSprayableObj      = false;
+        info->mIsSwitchObj         = false;
         info->mIsUnderwaterValid   = false;
-        info->mIsSurfaceBound      = false;
+        info->mIsSurfaceBound      = true;
+        info->mIsExLinear          = false;
         info->mFromSurfaceDist     = 0;
         info->mAdjustRotation.set(0, 0, 0);
         sHitActorMap.set(key, info);

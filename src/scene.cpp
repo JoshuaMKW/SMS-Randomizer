@@ -1,4 +1,5 @@
 #include <Dolphin/types.h>
+#include <Dolphin/math.h>
 
 #include <JSystem/JDrama/JDRActor.hxx>
 #include <JSystem/JDrama/JDRNameRefGen.hxx>
@@ -14,6 +15,7 @@
 #include <SMS/Map/MapCollisionData.hxx>
 #include <SMS/Map/MapCollisionStatic.hxx>
 #include <SMS/System/MarDirector.hxx>
+#include <SMS/Manager/FlagManager.hxx>
 
 #include <BetterSMS/libs/triangle.hxx>
 #include <BetterSMS/libs/geometry.hxx>
@@ -29,6 +31,17 @@ constexpr const char *randoOffKey = "randomizer_off";
 bool sIsMapLoaded;
 u32 sStageSeed;
 
+static TVec3f sSecretCourseStart          = TVec3f::zero();
+static TVec3f sSecretCourseStartPlatform  = TVec3f::zero();
+static TVec3f sSecretCourseCurrentPos     = TVec3f::zero();
+static TVec3f sSecretCourseLastPos        = TVec3f::zero();
+static TVec3f sSecretCourseCurrentDir     = TVec3f::zero();
+static TVec3f sSecretCourseShinePos       = TVec3f::zero();
+static size_t sSecretCourseObjectsLoaded  = 0;
+static size_t sSecretCourseSwitchesLoaded = 0;
+static bool sSecretCourseVertical         = false;
+static bool sSecretCourseFluddless        = false;
+
 static f32 getAreaOfTriangle(const TVectorTriangle& triangle) {
     const f32 lengthA = PSVECDistance(triangle.a, triangle.b);
     const f32 lengthB = PSVECDistance(triangle.b, triangle.c);
@@ -38,59 +51,57 @@ static f32 getAreaOfTriangle(const TVectorTriangle& triangle) {
     return sqrtf(sP * (sP - lengthA) * (sP - lengthB) * (sP - lengthC));
 }
 
+#define STR_EQUAL(a, b) strcmp(a, b) == 0
+
 static void rotateWithNormal(const TVec3f& normal, TVec3f& out) {
-    using namespace JGeometry;
-
-    TQuat4f quat;
-    TVec3f up = TVec3f::up();
-
-    //TRotation3<TMatrix34<SMatrix34<f32>>> rotation;
-    ////rotation.setLookDir(normal, TVec3f::up());
-    //setLookDir__Q29JGeometry64TRotation3_Q(&rotation, &normal, &up);
-
     Mtx mtx;
-    TVec3f origin = {0, 0, 0};
-    C_MTXLookAt(mtx, origin, up, normal);
 
-    /*out.z = radiansToAngle(atan2f(mtx[1][0], mtx[0][0]));
-    out.y = radiansToAngle(atan2f(-mtx[2][0], sqrtf(1.0f - mtx[2][0] * mtx[2][0])));
-    out.x = radiansToAngle(atan2f(mtx[2][1], mtx[2][2]));*/
-
-    f32 sy = sqrtf(mtx[2][1] * mtx[2][1] + mtx[2][0] * mtx[2][0]);
-    if (sy < 10 * __FLT_EPSILON__) {
-        out.x = radiansToAngle(atan2f(mtx[2][1], mtx[2][0]));
-        out.y = radiansToAngle(atan2f(sy, mtx[2][2]));
-        out.z = 0;
-    } else {
-        out.x = radiansToAngle(atan2f(mtx[2][1], mtx[2][0]));
-        out.y = radiansToAngle(atan2f(sy, mtx[2][2]));
-        out.z = radiansToAngle(atan2f(mtx[1][2], -mtx[0][2]));
+    {
+        const TVec3f up     = TVec3f::up();
+        const TVec3f origin = TVec3f::zero();
+        C_MTXLookAt(mtx, origin, up, normal);
     }
+
+    out.setRotation(mtx);
 }
 
 bool isContextRandomizable(const TMarDirector &director, const HitActorInfo &actorInfo, const THitActor &actor) {
-    if (SMS_isExMap__Fv() && !gRandomizeExStageSetting.getBool())
-        return false;
+    if (SMS_isExMap__Fv()) {
+        if (!gRandomizeExStageSetting.getBool())
+            return false;
+
+        constexpr const char *SkyIslandKey = "\x8B\xF3\x93\x87";
+        if (STR_EQUAL(actor.mKeyName, SkyIslandKey)) {
+            sSecretCourseStartPlatform = actor.mPosition;
+            return false;
+        }
+    }
 
     if (!actorInfo.mShouldRandomize)
         return false;
 
-    if (strcmp(actor.mKeyName, randoOffKey) == 0)
+    if (STR_EQUAL(actor.mKeyName, randoOffKey))
         return false;
 
     switch (director.mAreaID) {
+    case 1: {  // Delfino Plaza
+        if (STR_EQUAL(actor.mKeyName, "efDokanGate 0"))
+            return false;
+        if (STR_EQUAL(actor.mKeyName, "efDokanGate 1"))
+            return false;
+    }
     case 4: {  // Gelato Beach
-        if (strcmp(actor.mKeyName, "ShiningStone") == 0)
+        if (STR_EQUAL(actor.mKeyName, "ShiningStone"))
             return false;
-        if (strcmp(actor.mKeyName, "coral00") == 0)
+        if (STR_EQUAL(actor.mKeyName, "coral00"))
             return false;
-        if (strcmp(actor.mKeyName, "coral01") == 0)
+        if (STR_EQUAL(actor.mKeyName, "coral01"))
             return false;
         return true;
     }
     case 6: {  // Sirena Beach
         constexpr const char *hutKey = "\x83\x56\x83\x8C\x83\x69\x83\x56\x83\x87\x83\x62\x83\x76";
-        if (strcmp(actor.mKeyName, hutKey) == 0)
+        if (STR_EQUAL(actor.mKeyName, hutKey))
             return false;
         return true;
     }
@@ -117,6 +128,23 @@ bool isContextRandomizable(const TMarDirector &director, const HitActorInfo &act
     default:
         return true;
     }
+}
+
+bool isContextMakeSecretCourse(const TMarDirector& director) {
+    if (!SMS_isExMap__Fv())
+        return false;
+
+    // Filter out whole courses
+    if (director.mAreaID < 31)
+        return false;
+
+    if (director.mAreaID == 44)  // Noki Bottle
+        return false;
+
+    if (director.mAreaID == 52)  // Corona Mountain
+        return false;
+
+    return true;
 }
 
 bool isGroundContextAllowed(const TMarDirector &director, f32 x, f32 y, f32 z, const HitActorInfo &actorInfo,
@@ -252,7 +280,7 @@ bool isWallContextAllowed(const TMarDirector &director, f32 x, f32 y, f32 z,
 
     OSReport("Area of triangle (%.02f cm)\n", wallArea);
 
-    if (wallArea < 100000.0f)
+    if (wallArea < 50000.0f)
         return false;
 
     TVec3f position = {x, y, z};
@@ -306,6 +334,9 @@ bool isWallContextAllowed(const TMarDirector &director, f32 x, f32 y, f32 z,
             return false;
         return true;
     }
+    case 24: {  // Lily Pad Secret
+        return y < 0.0f;
+    }
     case 30: {  // Blooper surfing secret
         // Prevent OOB floor spawns
         if (y < 0.0f)
@@ -322,6 +353,119 @@ bool isWallContextAllowed(const TMarDirector &director, f32 x, f32 y, f32 z,
     }
     default:
         return true;
+    }
+}
+
+bool isRoofContextAllowed(const TMarDirector &director, f32 x, f32 y, f32 z,
+                          const HitActorInfo &actorInfo, const TBGCheckData &wall) {
+    if (y > 100000.0f)
+        return false;
+
+    if (actorInfo.mIsSprayableObj && y <= 0.0f)
+        return false;
+
+    TVec3f position = {x, y, z};
+    TVec3f origin   = {0.0f, 0.0f, 0.0f};
+
+    switch (director.mAreaID) {
+    case 0: {  // Airstrip
+        // Prevent invisible room spawns
+        if (y > 5000.0f)
+            return false;
+        return true;
+    }
+    case 1: {  // Delfino Plaza
+        if (y > 3000.0f && z < -8200.0f)
+            return false;
+        if (y <= 0.0f)
+            return false;
+        return true;
+    }
+    case 2: {  // Bianco Hills
+        return true;
+    }
+    case 3: {  // Ricco Harbor
+        if (x > -2000.0f)
+            return y < 4600.0f;
+        return y < 3600.0f;
+    }
+    case 5: {  // Pinna Beach
+        return true;
+    }
+    case 6: {  // Sirena Beach
+        if (y > 3000.0f)
+            return false;
+        return true;
+    }
+    case 8: {  // Pianta Village
+        // Prevent cheap trunk spawns
+        if (y < -650.0f)
+            return false;
+        return true;
+    }
+    case 9: {  // Noki Bay
+        // Prevent high ground OOB spawn
+        if (y > 12000.0f)
+            return false;
+        return true;
+    }
+    case 13: {  // Pinna Park
+        // Prevent behind ferris wheel bad spawn
+        if (x > 10000.0f && z > -7500.0f)
+            return false;
+        return true;
+    }
+    case 24: {  // Lily Pad Secret
+        return y < 0.0f;
+    }
+    case 30: {  // Blooper surfing secret
+        // Prevent OOB floor spawns
+        if (y < 0.0f)
+            return false;
+        return true;
+    }
+    case 44:  // Bottle
+        // Prevent OOB spawns
+        if (y > -4000.0f)
+            return false;
+        return true;
+    case 52: {  // Corona mountain
+        return true;
+    }
+    default:
+        return true;
+    }
+}
+
+static void getSecretCourseStart(const TMarDirector &director, TVec3f &out) {
+    switch (director.mAreaID) {
+    case 31:  // Noki Secret
+        out = {3000.0f, 4000.0f, 2000.0f};
+        break;
+    case 32:  // Gelato Secret
+        out = {-5800.0f, 3800.0f, 200.0f};
+        break;
+    case 41:  // Yoshi Go-Round
+        out = {800.0f, 1700.0f, 7700.0f};
+        break;
+    case 42:  // Pianta Village
+        out = {-10900.0f, 1400.0f, 1900.0f};
+        break;
+    case 46:  // Hillside Cave Secret
+        out = {0.0f, 8000.0f, 11000.0f};
+        break;
+    case 47:  // Hillside Cave Secret
+        out = {-6100.0f, 3400.0f, 156.0f};
+        break;
+    case 48:  // Ricco Secret
+        out = {-7200.0f, 4200.0f, 0.0f};
+        break;
+    case 50:  // Pinna Beach Secret
+        out = {-8300.0f, 4600.0f, 0.0f};
+        break;
+    case 51:  // Gelato Secret
+        out = {-9100.0f, 3650.0f, 1000.0f};
+        break;
     }
 }
 
@@ -394,6 +538,15 @@ static void getRandomizedScale(TVec3f &out, const HitActorInfo &actorInfo) {
                 out.y = lerp<f32>(0.4f, 2.5f, randLerp());
         }
     }
+
+    if (isContextMakeSecretCourse(*gpMarDirector) && !actorInfo.mIsExLinear) {
+        if (actorInfo.mShouldResizeXZ) {
+            if (tryChance(5.0f)) {
+                out.x *= 3.0f;
+                out.z *= 3.0f;
+            }
+        }
+    }
 }
 
 static size_t collectFloorsAtXZ(const TMapCollisionData &collision, f32 x, f32 z, bool groundValid, bool waterValid, size_t capacity, const TBGCheckData **out, f32 *yOut) {
@@ -425,10 +578,10 @@ static size_t collectFloorsAtXZ(const TMapCollisionData &collision, f32 x, f32 z
     return found;
 }
 
-static size_t collectWallsAtBlock(TBGCheckList *list, size_t max, const TBGCheckData **out) {
+static size_t collectTrisAtBlock(TBGCheckList *list, size_t max, const TBGCheckData **out, u16 ignoreType) {
     size_t wallsFound = 0;
     while (list && list->mColTriangle && wallsFound < max) {
-        if (list->mColTriangle->mType != 5)
+        if (list->mColTriangle->mType != ignoreType)
             out[wallsFound++] = list->mColTriangle;
         list = list->mNextTriangle;
     }
@@ -515,16 +668,10 @@ static bool getRandomizedFloorPosition(TVec3f &outPos, TVec3f &outRot, TVec3f &o
     }
 
     if (actorInfo.mIsSurfaceBound) {
-        /*outRot.set(radiansToAngle(atan2f(floor->mNormal.z, floor->mNormal.y)) +
-                       actorInfo.mAdjustRotation.x,
-                   radiansToAngle(atan2f(floor->mNormal.x, floor->mNormal.z)) +
-                       actorInfo.mAdjustRotation.y,
-                   radiansToAngle(atan2f(floor->mNormal.y, floor->mNormal.x)) +
-                       actorInfo.mAdjustRotation.z);*/
         rotateWithNormal(floor->mNormal, outRot);
-        /*outRot.x += actorInfo.mAdjustRotation.x;
+        outRot.x += actorInfo.mAdjustRotation.x;
         outRot.y += actorInfo.mAdjustRotation.y;
-        outRot.z += actorInfo.mAdjustRotation.z;*/
+        outRot.z += actorInfo.mAdjustRotation.z;
     } else {
         getRandomizedRotation(outRot, actorInfo);
     }
@@ -553,11 +700,11 @@ static bool getRandomizedWallPosition(TVec3f &outPos, TVec3f &outRot, TVec3f &ou
         const auto blockIdxX = static_cast<int>(gridFraction * (outPos.x + boundsX));
         const auto blockIdxZ = static_cast<int>(gridFraction * (outPos.z + boundsZ));
 
-        staticFound = collectWallsAtBlock(
+        staticFound = collectTrisAtBlock(
             collision.mStaticCollisionRoot[blockIdxX + (blockIdxZ * collision.mBlockXCount)]
                 .mCheckList[TBGCheckListRoot::WALL]
                 .mNextTriangle,
-            256, staticWalls);
+            256, staticWalls, 5);
     }
 
     const int decidedWall    = staticFound > 1 ? lerp<int>(0, staticFound - 1, randLerp()) : 0;
@@ -585,14 +732,10 @@ static bool getRandomizedWallPosition(TVec3f &outPos, TVec3f &outRot, TVec3f &ou
     outPos.add(scaledNormal);
 
     if (actorInfo.mIsSurfaceBound) {
-        /*outRot.set(actorInfo.mAdjustRotation.x,
-                   radiansToAngle(atan2f(floor->mNormal.x, floor->mNormal.z)) +
-                       actorInfo.mAdjustRotation.y,
-                   actorInfo.mAdjustRotation.z);*/
         rotateWithNormal(wall->mNormal, outRot);
-        /*outRot.x += actorInfo.mAdjustRotation.x;
+        outRot.x += actorInfo.mAdjustRotation.x;
         outRot.y += actorInfo.mAdjustRotation.y;
-        outRot.z += actorInfo.mAdjustRotation.z;*/
+        outRot.z += actorInfo.mAdjustRotation.z;
     } else {
         getRandomizedRotation(outRot, actorInfo);
     }
@@ -602,13 +745,126 @@ static bool getRandomizedWallPosition(TVec3f &outPos, TVec3f &outRot, TVec3f &ou
     return true;
 }
 
+static bool getRandomizedRoofPosition(TVec3f &outPos, TVec3f &outRot, TVec3f &outScl,
+                                      const TMarDirector &director, TMapCollisionData &collision,
+                                      const HitActorInfo &actorInfo) {
+    constexpr f32 gridFraction = 1.0f / 1024.0f;
+
+    const TBGCheckData *staticRoofs[256];
+
+    size_t staticFound = 0;
+    while (staticFound == 0) {
+        getRandomizedPositionXZ(outPos, collision);
+
+        const f32 boundsX = collision.mAreaSizeX;
+        const f32 boundsZ = collision.mAreaSizeZ;
+
+        /* Sample a block from the grid to pull walls from */
+        const auto blockIdxX = static_cast<int>(gridFraction * (outPos.x + boundsX));
+        const auto blockIdxZ = static_cast<int>(gridFraction * (outPos.z + boundsZ));
+
+        staticFound = collectTrisAtBlock(
+            collision.mStaticCollisionRoot[blockIdxX + (blockIdxZ * collision.mBlockXCount)]
+                .mCheckList[TBGCheckListRoot::ROOF]
+                .mNextTriangle,
+            256, staticRoofs, 0xFFFF);
+    }
+
+    const int decidedRoof    = staticFound > 1 ? lerp<int>(0, staticFound - 1, randLerp()) : 0;
+    const TBGCheckData *roof = staticRoofs[decidedRoof];
+
+    TVectorTriangle triangle(roof->mVertices[0], roof->mVertices[1], roof->mVertices[2]);
+    getRandomizedPointOnTriangle(outPos, triangle);
+
+    const TBGCheckData *floor;
+    f32 groundY = collision.checkGround(outPos.x, outPos.y, outPos.z, 1, &floor);
+
+    if (outPos.y - groundY < 200.0f)
+        return false;
+
+    if (!isRoofContextAllowed(director, outPos.x, outPos.y, outPos.z, actorInfo, *roof))
+        return false;
+
+    TVec3f scaledNormal = roof->mNormal;
+    scaledNormal.scale(actorInfo.mFromSurfaceDist + 1.0f);
+    outPos.add(scaledNormal);
+
+    if (actorInfo.mIsSurfaceBound) {
+        rotateWithNormal(roof->mNormal, outRot);
+        outRot.x += actorInfo.mAdjustRotation.x;
+        outRot.y += actorInfo.mAdjustRotation.y;
+        outRot.z += actorInfo.mAdjustRotation.z;
+    } else {
+        getRandomizedRotation(outRot, actorInfo);
+    }
+
+    getRandomizedScale(outScl, actorInfo);
+
+    return true;
+}
+
+static bool getRandomizedSkyPosition(TVec3f &outPos, TVec3f &outRot, TVec3f &outScl,
+                                       const TMarDirector &director,
+                                       const TMapCollisionData &collision,
+                                       const HitActorInfo &actorInfo) {
+    const f32 fromGroundHeight   = getFromGroundHeight(actorInfo);
+    getRandomizedPositionXZ(outPos, collision);
+
+    f32 groundY;
+    const TBGCheckData *floor;
+    const size_t floorsFound = collectFloorsAtXZ(collision, outPos.x, outPos.z, true,
+                                                 true, 1, &floor, &groundY);
+
+    if (floorsFound == 0)
+        return false;
+
+    outPos.y = groundY;
+
+    if (!isGroundContextAllowed(director, outPos.x, outPos.y, outPos.z, actorInfo, *floor))
+        return false;
+
+    getRandomizedRotation(outRot, actorInfo);
+    getRandomizedScale(outScl, actorInfo);
+
+    outPos.y += lerp(200.0f, 3000.0f, randLerp());
+
+    return true;
+}
+
 // -- MAP
 
 void initMapLoadStatus(TMarDirector *director) {
+    u8 shineID = SMS_getShineIDofExStage__FUc(director->mAreaID);
+    if (shineID == 255)
+        sSecretCourseFluddless = false;
+    else
+        sSecretCourseFluddless = !TFlagManager::smInstance->getShineFlag(shineID);
+
+    OSReport("Is Fluddless %d\n", sSecretCourseFluddless);
+
     sIsMapLoaded = false;
     sStageSeed   = getGameSeed();
-    sStageSeed  ^= ((director->mAreaID << 8) | director->mEpisodeID) * 0x5555;
+    sStageSeed ^= ((director->mAreaID << 8) | director->mEpisodeID);
+    sStageSeed *= 0x12345678;
+
+    if (sSecretCourseFluddless)
+        sStageSeed ^= 0xDEADBEEF;
+
     srand32(sStageSeed);
+
+    getSecretCourseStart(*gpMarDirector, sSecretCourseStart);
+    sSecretCourseStartPlatform = sSecretCourseStart;
+    sSecretCourseCurrentPos = sSecretCourseStart;
+    sSecretCourseLastPos    = sSecretCourseCurrentPos;
+    sSecretCourseCurrentDir = sSecretCourseCurrentPos;
+    sSecretCourseCurrentDir.negate();
+    sSecretCourseCurrentDir.normalize();
+
+    sSecretCourseObjectsLoaded = 0;
+    sSecretCourseSwitchesLoaded = 0;
+
+    sSecretCourseVertical = tryChance(30.0f);
+
 }
 
 static void setMapLoaded(TMapCollisionStatic *staticCol) {
@@ -621,6 +877,190 @@ SMS_PATCH_BL(SMS_PORT_REGION(0x801896E0, 0, 0, 0), setMapLoaded);
 
 // riccoSeaPollutionS2
 // mareSeaPollutionS12
+
+enum class PlaneSelection {
+    FLOOR,
+    ROOF,
+    WALL,
+    SKY
+};
+
+static void randomizeStageObject(TVec3f &outPos, TVec3f &outRot, TVec3f &outScl,
+                                 const TMarDirector &director, TMapCollisionData &collision,
+                                 const HitActorInfo &actorInfo) {
+    constexpr size_t MaxFloors = 8;
+    constexpr size_t MaxTries  = 10000;
+
+    const TBGCheckData *out[MaxFloors];
+    f32 groundY[MaxFloors];
+
+    size_t tries = 0;
+    bool positionFound = false;
+
+    PlaneSelection selection = PlaneSelection::SKY;
+
+    if (actorInfo.mIsGroundValid || actorInfo.mIsWaterValid || actorInfo.mIsUnderwaterValid) {
+        selection = PlaneSelection::FLOOR;
+        if (actorInfo.mIsWallValid && tryChance(50.0f))
+            selection = PlaneSelection::WALL;
+        if (actorInfo.mIsRoofValid && tryChance(25.0f))
+            selection = PlaneSelection::ROOF;
+    } else if (actorInfo.mIsWallValid) {
+        selection = PlaneSelection::WALL;
+        if (actorInfo.mIsRoofValid && tryChance(35.0f))
+            selection = PlaneSelection::ROOF;
+    } else if (actorInfo.mIsRoofValid) {
+        selection = PlaneSelection::ROOF;
+    }
+
+    do {
+        switch (selection) {
+        default:
+        case PlaneSelection::FLOOR:
+            positionFound = getRandomizedFloorPosition(outPos, outRot, outScl, director, collision, actorInfo);
+            break;
+        case PlaneSelection::ROOF:
+            positionFound =
+                getRandomizedRoofPosition(outPos, outRot, outScl, director, collision, actorInfo);
+            break;
+        case PlaneSelection::WALL:
+            positionFound =
+                getRandomizedWallPosition(outPos, outRot, outScl, director, collision, actorInfo);
+            break;
+        case PlaneSelection::SKY:
+            positionFound =
+                getRandomizedSkyPosition(outPos, outRot, outScl, director, collision, actorInfo);
+            break;
+        }
+        if (positionFound)
+            break;
+
+        tries += 1;
+    } while (tries < MaxTries);
+}
+
+static void randomizeSecretCourseObject(TVec3f &outPos, TVec3f &outRot, TVec3f &outScl,
+                                 const TMarDirector &director, TMapCollisionData &collision,
+                                 const HitActorInfo &actorInfo) {
+    getRandomizedScale(outScl, actorInfo);
+
+    if (actorInfo.mIsShineObj) {
+        const TBGCheckData *roof;
+        const f32 roofHeight = collision.checkRoof(sSecretCourseShinePos.x, sSecretCourseShinePos.y + 200.0f,
+                                                   sSecretCourseShinePos.z, 0, &roof);
+
+        outPos.x = sSecretCourseShinePos.x;
+        outPos.y = Min(roofHeight - 100.0f, sSecretCourseShinePos.y + actorInfo.mFromSurfaceDist + 200.0f);
+        outPos.z = sSecretCourseShinePos.z;
+        
+        getRandomizedRotation(outRot, actorInfo);
+        return;
+    }
+
+    if (actorInfo.mIsSwitchObj) {
+        switch (sSecretCourseSwitchesLoaded) {
+        default:
+        case 0:
+            outPos = sSecretCourseStartPlatform;
+            outPos.x += 500.0f;
+            break;
+        case 1:
+            outPos = sSecretCourseStartPlatform;
+            outPos.x -= 500.0f;
+            break;
+        case 2:
+            outPos = sSecretCourseStartPlatform;
+            outPos.z += 500.0f;
+            break;
+        case 3:
+            outPos = sSecretCourseStartPlatform;
+            outPos.z -= 500.0f;
+            break;
+        }
+        return;
+    }
+
+    if (actorInfo.mIsExLinear) {
+        Mtx rot;
+
+        TVec3f pprevObjPos = sSecretCourseLastPos;
+        TVec3f prevObjPos  = sSecretCourseCurrentPos;
+
+        do {
+            const f32 theta = 2.0f * M_PI * randLerp();
+            const f32 phi   = acosf(2.0f * randLerp() - 1.0f);
+
+            f32 horizontalRadius;
+            f32 verticalRadius;
+            if (sSecretCourseFluddless) {
+                horizontalRadius = sSecretCourseVertical ? 1400.0f : 2000.0f;
+                verticalRadius   = sSecretCourseVertical ? 1400.0f : 1300.0f;
+            } else {
+                horizontalRadius = sSecretCourseVertical ? 2000.0f : 2500.0f;
+                verticalRadius   = sSecretCourseVertical ? 1600.0f : 1500.0f;
+            }
+
+            const f32 adjustX = horizontalRadius * outScl.x * sinf(phi) * cosf(theta);
+            const f32 adjustY = verticalRadius * outScl.y * sinf(phi) * sinf(theta) + 100.0f;
+            const f32 adjustZ = horizontalRadius * outScl.z * cosf(phi);
+
+            const f32 xzDistance = sqrtf(adjustX * adjustX + adjustZ * adjustZ);
+
+            if (xzDistance < (sSecretCourseVertical ? 1100.0f : 1400.0f))
+                continue;
+
+            if (xzDistance < (sSecretCourseVertical ? 2200.0f : 2800.0f))
+                continue;
+
+            outPos.x = prevObjPos.x + adjustX;
+            outPos.y = prevObjPos.y + adjustY;
+            outPos.z = prevObjPos.z + adjustZ;
+
+        } while (PSVECDistance(prevObjPos, outPos) >
+                 PSVECDistance(pprevObjPos, outPos) && outPos.y < 500.0f);
+        
+        sSecretCourseLastPos    = sSecretCourseCurrentPos;
+        sSecretCourseCurrentPos = outPos;
+
+        {
+            const TVec3f up     = TVec3f::up();
+            const TVec3f origin = prevObjPos;
+            C_MTXLookAt(rot, origin, up, outPos);
+        }
+
+        PSMTXInverse(rot, rot);
+        outRot.setRotation(rot);
+        return;
+    }
+    outPos.y = 0.0f;
+    while (outPos.y < 500.0f) {
+        const f32 theta = 2.0f * M_PI * randLerp();
+        const f32 phi   = acosf(2.0f * randLerp() - 1.0f);
+
+        f32 horizontalRadius;
+        f32 verticalRadius;
+        if (sSecretCourseFluddless) {
+            horizontalRadius = sSecretCourseVertical ? 400.0f : 500.0f;
+            verticalRadius   = sSecretCourseVertical ? 250.0f : 350.0f;
+        } else {
+            horizontalRadius = sSecretCourseVertical ? 550.0f : 700.0f;
+            verticalRadius   = sSecretCourseVertical ? 600.0f : 500.0f;
+        }
+
+        const f32 adjustX = horizontalRadius * outScl.x * sinf(phi) * cosf(theta);
+        const f32 adjustY = verticalRadius * outScl.y * sinf(phi) * sinf(theta) + (sSecretCourseVertical ? 50.0f : 0.0f);
+        const f32 adjustZ = horizontalRadius * outScl.z * cosf(phi);
+
+        outPos.x = sSecretCourseCurrentPos.x + adjustX;
+        outPos.y = sSecretCourseCurrentPos.y + adjustY;
+        outPos.z = sSecretCourseCurrentPos.z + adjustZ;
+
+    }
+    sSecretCourseLastPos    = sSecretCourseCurrentPos;
+    sSecretCourseCurrentPos = outPos;
+
+    getRandomizedRotation(outRot, actorInfo);
+}
 
 static u32 randomizeObject() {
     THitActor *actor;
@@ -637,7 +1077,6 @@ static u32 randomizeObject() {
 
     if (!isContextRandomizable(*gpMarDirector, *actorInfo, *actor))
         return 0;
-
     
     if (gpMarDirector->mAreaID == 1) {  // Delfino Plaza
         if (strcmp(actor->mKeyName, "GateToRicco") == 0) {
@@ -645,47 +1084,37 @@ static u32 randomizeObject() {
         }
     }
 
-    constexpr size_t MaxFloors = 8;
-    constexpr size_t MaxTries = 100;
-
     const u32 gameSeed         = getGameSeed();
+    u32 key            = (actor->mKeyCode * 0x41C64E6D + 0x3039) ^ gameSeed;
 
-    size_t tries = 0;
-    u32 key      = (actor->mKeyCode * 0x41C64E6D + 0x3039) ^ gameSeed;
+    if (sSecretCourseFluddless)
+        key *= 0x51678391;
+
     srand32(key);
+
     {
         TVec3f truePosition = actor->mPosition;
         TVec3f trueRotation = actor->mRotation;
         TVec3f trueScale = actor->mSize;
 
-        const TBGCheckData *out[MaxFloors];
-        f32 groundY[MaxFloors];
+        const bool isEntity =
+            ((actorInfo->mIsItemObj || actorInfo->mIsPlayer) && !actorInfo->mIsShineObj);
 
-        do {
-            bool positionFound;
-
-            bool useWalls = actorInfo->mIsWallValid;
-            if (actorInfo->mIsGroundValid) {
-                useWalls &= tryChance(75.0f);
-            }
-
-            if (useWalls)
-                positionFound =
-                    getRandomizedWallPosition(truePosition, trueRotation, trueScale, *gpMarDirector,
-                                              *gpMapCollisionData, *actorInfo);
-            else
-                positionFound =
-                    getRandomizedFloorPosition(truePosition, trueRotation, trueScale, *gpMarDirector,
-                                               *gpMapCollisionData, *actorInfo);
-            if (positionFound)
-                break;
-
-            tries += 1;
-        } while (tries < MaxTries);
+        if (isContextMakeSecretCourse(*gpMarDirector) && !isEntity)
+            randomizeSecretCourseObject(truePosition, trueRotation, trueScale, *gpMarDirector,
+                                        *gpMapCollisionData, *actorInfo);
+        else
+            randomizeStageObject(truePosition, trueRotation, trueScale, *gpMarDirector,
+                                 *gpMapCollisionData, *actorInfo);
 
         actor->mPosition = truePosition;
         actor->mRotation = trueRotation;
         actor->mSize     = trueScale;
+    }
+
+    if (STR_EQUAL(actor->mKeyName, "normalvariant3") ||
+        (STR_EQUAL(actor->mKeyName, "WoodBlockLarge 0") && gpMarDirector->mAreaID == 32)) {
+        sSecretCourseShinePos = actor->mPosition;
     }
 
     srand(gameSeed);
@@ -695,3 +1124,5 @@ static u32 randomizeObject() {
 SMS_PATCH_BL(SMS_PORT_REGION(0x802F6EE0, 0, 0, 0), randomizeObject);
 SMS_WRITE_32(SMS_PORT_REGION(0x802F6EE4, 0, 0, 0), 0x907E0010);
 SMS_WRITE_32(SMS_PORT_REGION(0x802F6EE8, 0, 0, 0), 0x907E0014);
+
+#undef STR_EQUAL
