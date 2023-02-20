@@ -17,8 +17,8 @@ static void *collectMudBoat(void *vtable) {
 
     *(void **)actor = vtable;
 
-    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-    actorInfo->mShouldRandomize = false;
+    HitActorInfo &actorInfo     = getRandomizerInfo(actor);
+    actorInfo.mShouldRandomize = false;
     return vtable;
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x801D7E1C, 0, 0, 0), collectMudBoat);

@@ -1,3 +1,4 @@
+#include <BetterSMS/libs/constmath.hxx>
 #include <System/MarNameRefGen.hxx>
 #include <Dolphin/types.h>
 #include <JSystem/JSupport/JSUMemoryStream.hxx>
@@ -6,6 +7,7 @@
 #include <SMS/Map/MapCollisionData.hxx>
 #include <SMS/MapObj/MapObjGeneral.hxx>
 #include <SMS/MoveBG/Item.hxx>
+#include <SMS/MarioUtil/DrawUtil.hxx>
 #include <SMS/macros.h>
 #include <SMS/raw_fn.hxx>
 #include <SMS/rand.h>
@@ -13,376 +15,457 @@
 #include <BetterSMS/module.hxx>
 
 #include "actorinfo.hxx"
+#include "seed.hxx"
 #include "settings.hxx"
-
-static bool isMarioRandomizable(const TMarDirector &director, const TMario *actor) {
-    switch (director.mAreaID) {
-    default:
-        return !SMS_isExMap__Fv();
-    }
-}
 
 #define STR_EQUAL(a, b) strcmp(a, b) == 0
 
-static THitActor *collectGeneralActors(const TMarNameRefGen *gen, const char *name) {
+void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& actorInfo) {
+    const char *objectType = actorInfo.mObjectType;
+    const char *objectKey = actorInfo.mObjectKey;
+
+    actorInfo.mShouldRandomize = Randomizer::isRandomObjects();
+
+    if (STR_EQUAL(objectType, "MapObjSmoke")) {  // Delfino Plaza
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjFlag")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjGrass")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjGrassGroup")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjChangeStage")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjStartDemoLoad")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjWaterSpray")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjSoundGroup")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjFloatOnSea")) {
+        actorInfo.mIsGroundValid     = false;
+        actorInfo.mIsWaterValid      = true;
+        actorInfo.mIsUnderwaterValid = false;
+    } else if (STR_EQUAL(objectType, "OrangeSeal")) {
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mIsGroundValid     = true;
+        actorInfo.mIsWallValid       = true;
+        actorInfo.mIsSurfaceBound    = true;
+        actorInfo.mIsWaterValid      = false;
+        actorInfo.mIsUnderwaterValid = false;
+        actorInfo.mAdjustRotation    = {90, 0, 0};
+    } else if (STR_EQUAL(objectType, "MapStaticObj")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "WoodBox")) {
+        actorInfo.mShouldRandomize     = true;
+        actorInfo.mShouldResizeUniform = true;
+    } else if (STR_EQUAL(objectType, "JellyGate")) {
+        actorInfo.mFromSurfaceDist = 5;
+        actorInfo.mIsRoofValid     = true;
+        actorInfo.mIsWallValid     = true;
+        actorInfo.mIsSurfaceBound  = true;
+    } else if (STR_EQUAL(objectType, "GateToRicco")) {
+        actorInfo.mFromSurfaceDist = 100;
+        actorInfo.mIsRoofValid     = true;
+        actorInfo.mIsWallValid     = true;
+        actorInfo.mIsSurfaceBound  = true;
+    } else if (STR_EQUAL(objectType, "Billboard")) {
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mAdjustRotation    = {0, 90, 0};
+        actorInfo.mIsGroundValid     = false;
+        actorInfo.mIsWallValid       = true;
+        actorInfo.mIsSurfaceBound    = true;
+    } else if (STR_EQUAL(objectType, "MonumentShine")) {
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mIsGroundValid     = false;
+        actorInfo.mIsWaterValid      = false;
+        actorInfo.mIsUnderwaterValid = false;
+        actorInfo.mIsRoofValid       = true;
+        actorInfo.mIsWallValid       = false;
+        actorInfo.mFromSurfaceDist   = 300;
+    } else if (STR_EQUAL(objectType, "BellDolpicTV")) {
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mIsGroundValid     = false;
+        actorInfo.mIsWaterValid      = false;
+        actorInfo.mIsUnderwaterValid = false;
+        actorInfo.mIsRoofValid       = true;
+        actorInfo.mIsWallValid       = false;
+        // actorInfo.mFromSurfaceDist = 800;
+    } else if (STR_EQUAL(objectType, "BellDolpicPolice")) {
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mIsGroundValid     = false;
+        actorInfo.mIsWaterValid      = false;
+        actorInfo.mIsUnderwaterValid = false;
+        actorInfo.mIsRoofValid       = true;
+        actorInfo.mIsWallValid       = false;
+        // actorInfo.mFromSurfaceDist = 800;
+    } else if (STR_EQUAL(objectType, "DemoCannon")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "DokanGate")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "DptCoronaFence")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MareGate")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "WaterRecoverObj")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "WaterHitHideObj")) {
+        //actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "PalmLeaf 0")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "PalmLeaf 1")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "PalmLeaf 2")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "PalmLeaf 3")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "PalmLeaf 4")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "FruitBasketEvent")) {
+        actorInfo.mShouldResizeXZ = false;
+        actorInfo.mShouldResizeY = false;
+        if (STR_EQUAL(objectKey, "\x83\x74\x83\x8B\x81\x5B\x83\x63\x82\xA9\x82\xB2\x82\x63\xC5\x0F"
+                                 "\xBF\xFE\x44")) {  // Durian Basket
+            actorInfo.mIsSurfaceBound  = true;
+            actorInfo.mFromSurfaceDist = -100.0f;
+            actorInfo.mAdjustRotation  = {0.0f, 0.0f, 90.0f};
+        }
+    } else if (STR_EQUAL(objectType, "WindmillRoof")) {  // Bianco Hills
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "BiaBridge")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Amenbo")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "HanaSambo")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "BellWatermill")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "WireTrap")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "CraneRotY")) {  // Ricco Harbor
+        actorInfo.mShouldResizeXZ  = false;
+        actorInfo.mShouldResizeY  = false;
+    } else if (STR_EQUAL(objectType, "RiccoLog")) {
+        actorInfo.mIsGroundValid = false;
+        actorInfo.mIsWaterValid = true;
+    } else if (STR_EQUAL(objectKey, "\x89\xBA\x90\x85\x8D\xF2\x20\x30")) {  // Grille 0
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "\x89\xBA\x90\x85\x8D\xF2\x20\x31")) {  // Grille 1
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "submarine")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SandEgg")) {  // Gelato Beach
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SandBombBase")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SandLeafBase")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "coral00")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "coral01")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "LeanMirror")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "FruitHitHideObj")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "TeethOfJuicer")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "bosshanachan0")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Shining")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "fenceRevolve 3")) {  // Pinna
+        if (director.mAreaID == 13 && director.mEpisodeID == 2)
+            actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Merrygoround")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "FerrisWheel")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Viking")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "ShellCup")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "AmiKing")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Rocket")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "PinnaDoor")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "BalloonKoopaJr")) {  // TODO: Attempt to randomize
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SirenaShop")) {  // Sirena Beach
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "ChestRevolve")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Closet")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "PosterTeresa")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Door")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "PanelRevolve")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "PanelBreak")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "PictureTeresa")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "casinoRoulette")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "ItemSlotDrum")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SlotDrum")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SirenaCasinoRoof")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Donchou")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SakuCasino")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "RailFence")) {  // Pianta Village
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "FireWanwan")) {  // TODO: Find a way to randomize
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "BossWanwan")) {  // TODO: Find a way to randomize
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MareEventBumpyWall")) {  // Noki
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MareEventPoint")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MareFall")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "CoinFish")) {  // TODO: Find a way to randomize
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SakuCasino")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SakuCasino")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectKey, "\x8A\xCF\x97\x97\x8E\xD4\x81\x69\x89\x93\x8C\x69\x81\x6A")) {  // FerrisLOD
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "WaterRecoverObj")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "WaterHitPictureHideObj")) {
+        actorInfo.mShouldRandomize = Randomizer::isRandomCollectibles();
+        actorInfo.mFromSurfaceDist = 0;
+        actorInfo.mAdjustRotation  = {0, 0, 0};
+        actorInfo.mShouldRotateXZ  = true;
+        actorInfo.mShouldRotateY   = true;
+        actorInfo.mIsGroundValid   = true;
+        actorInfo.mIsRoofValid     = true;
+        actorInfo.mIsWallValid     = true;
+        actorInfo.mIsSurfaceBound  = true;
+        actorInfo.mIsSprayableObj  = true;
+    } else if (STR_EQUAL(objectType, "HideObjPictureTwin")) {
+        actorInfo.mShouldRandomize = Randomizer::isRandomCollectibles();
+        actorInfo.mFromSurfaceDist = 0;
+        actorInfo.mAdjustRotation  = {0, 0, 0};
+        actorInfo.mShouldRotateXZ  = true;
+        actorInfo.mShouldRotateY   = true;
+        actorInfo.mIsGroundValid   = true;
+        actorInfo.mIsRoofValid     = true;
+        actorInfo.mIsWallValid     = true;
+        actorInfo.mIsSurfaceBound  = true;
+        actorInfo.mIsSprayableObj  = true;
+    } else if (STR_EQUAL(objectType, "SunModel")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "SunsetModel")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "GoalFlag")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "EMario")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Manhole")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "AnimalMew")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "FishoidA")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "FishoidB")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "FishoidC")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "FishoidD")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "EffectPinnaFunsui")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "FruitsBoat")) {
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mIsGroundValid     = false;
+        actorInfo.mIsWaterValid      = true;
+        actorInfo.mIsUnderwaterValid = false;
+        actorInfo.mFromSurfaceDist   = 0;
+    } else if (STR_EQUAL(objectType, "FruitsBoatB")) {
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mIsGroundValid     = false;
+        actorInfo.mIsWaterValid      = true;
+        actorInfo.mIsUnderwaterValid = false;
+        actorInfo.mFromSurfaceDist   = 0;
+    } else if (STR_EQUAL(objectType, "MuddyBoat")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "Umaibou")) {
+        actorInfo.mIsExLinear = true;
+    } else if (STR_EQUAL(objectType, "RedCoinSwitch")) {
+        actorInfo.mIsSurfaceBound  = true;
+        actorInfo.mIsSwitchObj     = true;
+    } else if (STR_EQUAL(objectType, "MapObjSwitch")) {
+        actorInfo.mIsSurfaceBound  = true;
+        actorInfo.mIsSwitchObj     = true;
+    } else if (STR_EQUAL(objectType, "TurboNozzleDoor")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "NozzleBox")) {
+        actorInfo.mShouldRandomize     = true;
+        actorInfo.mIsGroundValid       = true;
+        actorInfo.mIsWaterValid        = false;
+        actorInfo.mIsUnderwaterValid   = false;
+        actorInfo.mShouldResizeUniform = false;
+        actorInfo.mShouldResizeXZ      = false;
+        actorInfo.mShouldResizeY       = false;
+        actorInfo.mShouldRotateXZ      = false;
+        actorInfo.mShouldRotateY       = true;
+    } else if (STR_EQUAL(objectType, "Coin")) {
+        actorInfo.mShouldRandomize     = true;
+        actorInfo.mIsGroundValid       = true;
+        actorInfo.mIsWaterValid        = true;
+        actorInfo.mIsUnderwaterValid   = true;
+        actorInfo.mShouldResizeXZ      = false;
+        actorInfo.mShouldResizeY       = false;
+        actorInfo.mShouldRotateXZ      = false;
+        actorInfo.mShouldRotateY       = false;
+    } else if (STR_EQUAL(objectType, "CoinBlue")) {
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mIsGroundValid     = true;
+        actorInfo.mIsWaterValid      = true;
+        actorInfo.mIsUnderwaterValid = true;
+        actorInfo.mShouldResizeXZ    = false;
+        actorInfo.mShouldResizeY     = false;
+        actorInfo.mShouldRotateXZ    = false;
+        actorInfo.mShouldRotateY     = false;
+    } else if (STR_EQUAL(objectType, "CoinRed")) {
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mIsGroundValid     = true;
+        actorInfo.mIsWaterValid      = true;
+        actorInfo.mIsUnderwaterValid = true;
+        actorInfo.mShouldResizeXZ    = false;
+        actorInfo.mShouldResizeY     = false;
+        actorInfo.mShouldRotateXZ    = false;
+        actorInfo.mShouldRotateY     = false;
+    } else if (STR_EQUAL(objectType, "NPCPeach")) {
+        if (director.mAreaID == 1 && director.mEpisodeID == 1)
+            actorInfo.mShouldRandomize     = false;
+    } else if (STR_EQUAL(objectType, "Mario")) {
+        actorInfo.mShouldRandomize     = !SMS_isExMap__Fv();
+        actorInfo.mIsGroundValid       = true;
+        actorInfo.mIsWaterValid        = true;
+        actorInfo.mIsUnderwaterValid   = true;
+        actorInfo.mShouldResizeUniform = true;
+        actorInfo.mShouldResizeXZ      = false;
+        actorInfo.mShouldResizeY       = false;
+        actorInfo.mShouldRotateXZ      = false;
+        actorInfo.mShouldRotateY       = true;
+        actorInfo.mIsPlayer            = true;
+    }
+}
+
+static u16 *sStageWarps[32]{};
+static u16 sStageWarpsCollected = 0;
+
+void resetStageWarpInfo() { sStageWarpsCollected = 0; }
+
+static void collectStageWarpIDs(u16 *stageWarp, JSUMemoryInputStream *in) {
+    load__11TMapObjBaseFR20JSUMemoryInputStream(stageWarp, in);
+    sStageWarps[sStageWarpsCollected++] = stageWarp;
+}
+SMS_PATCH_BL(SMS_PORT_REGION(0x801C173C, 0, 0, 0), collectStageWarpIDs);
+
+static u32 applyRandomStageWarps() {
+    auto warpSetting = Randomizer::getRandomWarpsState();
+    if (warpSetting == RandomWarpSetting::OFF)
+        return SMSGetGameVideoHeight__Fv();
+
+    if (warpSetting == RandomWarpSetting::LOCAL) {
+        u16 stageWarpIDs[32];
+        u32 warpSetFlags = 0;
+
+    #define GET_FLAG(bits, idx) static_cast<bool>((bits & (1 << (idx))) >> idx)
+    #define SET_FLAG(bits, idx, flag) static_cast<bool>(bits |= ((1 & flag) << (idx)))
+
+        Randomizer::srand32(gpMarDirector->mAreaID * 0x51324217 * Randomizer::getGameSeed());
+
+        for (int i = 0; i < sStageWarpsCollected; ++i) {
+            while (true) {
+                u32 id = lerp<f32>(0.0f, static_cast<f32>(sStageWarpsCollected) - 0.01f,
+                                   Randomizer::randLerp());
+                if (!GET_FLAG(warpSetFlags, id)) {
+                    stageWarpIDs[id] = sStageWarps[i][0x138 / 2];
+                    SET_FLAG(warpSetFlags, id, true);
+                    break;
+                }
+            }
+        }
+
+        for (int i = 0; i < sStageWarpsCollected; ++i) {
+            sStageWarps[i][0x138 / 2] = stageWarpIDs[i];
+        }
+
+    #undef GET_FLAG
+    #undef SET_FLAG
+
+        return SMSGetGameVideoHeight__Fv();
+    }
+
+    // Global warps
+
+    return SMSGetGameVideoHeight__Fv();
+}
+SMS_PATCH_BL(SMS_PORT_REGION(0x802B8B44, 0, 0, 0), applyRandomStageWarps);
+
+//static u32 applyRandomStageWarps() {
+//    if (!Randomizer::getRandomWarpsState())
+//        return SMSGetGameVideoHeight__Fv();
+//
+//    u16 stageWarpIDs[32];
+//    u32 warpSetFlags = 0;
+//
+//#define GET_FLAG(bits, idx)       static_cast<bool>((bits & (1 << (idx))) >> idx)
+//#define SET_FLAG(bits, idx, flag) static_cast<bool>(bits |= ((1 & flag) << (idx)))
+//
+//    Randomizer::srand32(gpMarDirector->mAreaID * 0x51324217 * Randomizer::getGameSeed());
+//
+//    for (int i = 0; i < sStageWarpsCollected; ++i) {
+//        while (true) {
+//            u32 id = lerp<f32>(0.0f, static_cast<f32>(sStageWarpsCollected) - 0.01f,
+//                               Randomizer::randLerp());
+//            if (!GET_FLAG(warpSetFlags, id)) {
+//                stageWarpIDs[id] = sStageWarps[i][0x138 / 2];
+//                SET_FLAG(warpSetFlags, id, true);
+//                break;
+//            }
+//        }
+//    }
+//
+//    for (int i = 0; i < sStageWarpsCollected; ++i) {
+//        sStageWarps[i][0x138 / 2] = stageWarpIDs[i];
+//    }
+//
+//#undef GET_FLAG
+//#undef SET_FLAG
+//
+//    return SMSGetGameVideoHeight__Fv();
+//}
+//SMS_PATCH_BL(SMS_PORT_REGION(0x802B8B44, 0, 0, 0), applyRandomStageWarps);
+
+static THitActor *collectObjectTypes(const TMarNameRefGen *gen, const char *name) {
     auto *actor = reinterpret_cast<THitActor *>(gen->getNameRef(name));
 
-    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-    actorInfo->mShouldRandomize = true;
-
-    if (STR_EQUAL(name, "MapObjBase")) {
-        auto *mapobj = reinterpret_cast<TMapObjBase *>(actor);
-    } else if (STR_EQUAL(name, "MapObjSmoke")) {  // Delfino Plaza
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "MapObjFlag")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "MapObjWaterSpray")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "MapObjSoundGroup")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "MapObjFloatOnSea")) {
-        actorInfo->mShouldRandomize   = true;
-        actorInfo->mIsGroundValid     = false;
-        actorInfo->mIsWaterValid      = true;
-        actorInfo->mIsUnderwaterValid = false;
-    } else if (STR_EQUAL(name, "OrangeSeal")) {
-        actorInfo->mShouldRandomize   = true;
-        actorInfo->mIsGroundValid     = true;
-        actorInfo->mIsWallValid       = true;
-        actorInfo->mIsSurfaceBound    = true;
-        actorInfo->mIsWaterValid      = false;
-        actorInfo->mIsUnderwaterValid = false;
-        actorInfo->mAdjustRotation    = {90, 0, 0};
-    } else if (STR_EQUAL(name, "MapStaticObj")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "WoodBox")) {
-        actorInfo->mShouldRandomize     = true;
-        actorInfo->mShouldResizeUniform = true;
-    } else if (STR_EQUAL(name, "JellyGate")) {
-        actorInfo->mShouldRandomize   = gRandomizeObjectsSetting.getBool();
-        actorInfo->mFromSurfaceDist   = 5;
-        actorInfo->mAdjustRotation    = {0, 0, 0};
-        actorInfo->mShouldRotateXZ    = true;
-        actorInfo->mShouldRotateY     = true;
-        actorInfo->mIsGroundValid     = true;
-        actorInfo->mIsWaterValid      = false;
-        actorInfo->mIsUnderwaterValid = false;
-        actorInfo->mIsRoofValid       = true;
-        actorInfo->mIsWallValid       = true;
-        actorInfo->mIsSurfaceBound    = true;
-    } else if (STR_EQUAL(name, "Billboard")) {
-        actorInfo->mShouldRandomize   = gRandomizeObjectsSetting.getBool();
-        actorInfo->mFromSurfaceDist   = 0;
-        actorInfo->mAdjustRotation    = {0, 90, 0};
-        actorInfo->mShouldRotateXZ    = true;
-        actorInfo->mShouldRotateY     = true;
-        actorInfo->mIsGroundValid     = false;
-        actorInfo->mIsWaterValid      = false;
-        actorInfo->mIsUnderwaterValid = false;
-        actorInfo->mIsWallValid       = true;
-        actorInfo->mIsRoofValid       = false;
-        actorInfo->mIsSurfaceBound    = true;
-    } else if (STR_EQUAL(name, "MonumentShine")) {
-        actorInfo->mShouldRandomize   = true;
-        actorInfo->mIsGroundValid     = false;
-        actorInfo->mIsWaterValid      = false;
-        actorInfo->mIsUnderwaterValid = false;
-        actorInfo->mIsRoofValid       = true;
-        actorInfo->mIsWallValid       = false;
-        actorInfo->mFromSurfaceDist = 300;
-    } else if (STR_EQUAL(name, "BellDolpicTV")) {
-        actorInfo->mShouldRandomize   = true;
-        actorInfo->mIsGroundValid     = false;
-        actorInfo->mIsWaterValid      = false;
-        actorInfo->mIsUnderwaterValid = false;
-        actorInfo->mIsRoofValid       = true;
-        actorInfo->mIsWallValid       = false;
-        //actorInfo->mFromSurfaceDist = 800;
-    } else if (STR_EQUAL(name, "BellDolpicPolice")) {
-        actorInfo->mShouldRandomize   = true;
-        actorInfo->mIsGroundValid     = false;
-        actorInfo->mIsWaterValid      = false;
-        actorInfo->mIsUnderwaterValid = false;
-        actorInfo->mIsRoofValid       = true;
-        actorInfo->mIsWallValid       = false;
-        //actorInfo->mFromSurfaceDist = 800;
-    } else if (STR_EQUAL(name, "DemoCannon")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "DokanGate")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "DptCoronaFence")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "MareGate")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "WaterRecoverObj")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "WaterHitHideObj")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "WindmillRoof")) {  // Bianco Hills
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SandEgg")) {  // Gelato Beach
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SandBombBase")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SandLeafBase")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "coral00")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "coral01")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "LeanMirror")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "TeethOfJuicer")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "bosshanachan0")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "Shining")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "Merrygoround")) {  // Pinna
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "ShellCup")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "AmiKing")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "Rocket")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "PinnaDoor")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "BalloonKoopaJr")) {  // TODO: Attempt to randomize
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SirenaShop")) {  // Sirena Beach
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "ChestRevolve")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "Closet")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "PosterTeresa")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "Door")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "PanelRevolve")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "PanelBreak")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "PictureTeresa")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "casinoRoulette")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "ItemSlotDrum")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SlotDrum")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SirenaCasinoRoof")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "Donchou")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SakuCasino")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "RailFence")) {  // Pianta Village
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "FireWanwan")) {  // TODO: Find a way to randomize
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "BossWanwan")) {  // TODO: Find a way to randomize
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "MareEventBumpyWall")) {  // Noki
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "MareEventPoint")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "MareFall")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "CoinFish")) {  // TODO: Find a way to randomize
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SakuCasino")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SakuCasino")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "FerrisLOD")) {  // General
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "WaterRecoverObj")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "WaterHitPictureHideObj")) {
-        actorInfo->mShouldRandomize = gRandomizeCollectiblesSetting.getBool();
-        actorInfo->mFromSurfaceDist = 0;
-        actorInfo->mAdjustRotation  = {0, 0, 0};
-        actorInfo->mShouldRotateXZ  = true;
-        actorInfo->mShouldRotateY   = true;
-        actorInfo->mIsGroundValid   = true;
-        actorInfo->mIsRoofValid     = true;
-        actorInfo->mIsWallValid     = true;
-        actorInfo->mIsSurfaceBound  = true;
-        actorInfo->mIsSprayableObj  = true;
-    } else if (STR_EQUAL(name, "HideObjPictureTwin")) {
-        actorInfo->mShouldRandomize = gRandomizeCollectiblesSetting.getBool();
-        actorInfo->mFromSurfaceDist = 0;
-        actorInfo->mAdjustRotation  = {0, 0, 0};
-        actorInfo->mShouldRotateXZ  = true;
-        actorInfo->mShouldRotateY   = true;
-        actorInfo->mIsGroundValid   = true;
-        actorInfo->mIsRoofValid     = true;
-        actorInfo->mIsWallValid     = true;
-        actorInfo->mIsSurfaceBound  = true;
-        actorInfo->mIsSprayableObj  = true;
-    } else if (STR_EQUAL(name, "SunModel")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "SunsetModel")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "GoalFlag")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "EMario")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "Manhole")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "AnimalMew")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "FishoidA")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "FishoidB")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "FishoidC")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "FishoidD")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "EffectPinnaFunsui")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "FruitsBoat")) {
-        actorInfo->mShouldRandomize   = true;
-        actorInfo->mIsGroundValid     = false;
-        actorInfo->mIsWaterValid      = true;
-        actorInfo->mIsUnderwaterValid = false;
-        actorInfo->mFromSurfaceDist  = 0;
-    } else if (STR_EQUAL(name, "FruitsBoatB")) {
-        actorInfo->mShouldRandomize   = true;
-        actorInfo->mIsGroundValid     = false;
-        actorInfo->mIsWaterValid      = true;
-        actorInfo->mIsUnderwaterValid = false;
-        actorInfo->mFromSurfaceDist   = 0;
-    } else if (STR_EQUAL(name, "MuddyBoat")) {
-        actorInfo->mShouldRandomize = false;
-    } else if (STR_EQUAL(name, "Umaibou")) {
-        actorInfo->mIsExLinear = true;
-    } else if (STR_EQUAL(name, "RedCoinSwitch")) {
-        actorInfo->mShouldRandomize = true;
-        actorInfo->mIsSurfaceBound  = true;
-        actorInfo->mIsSwitchObj     = true;
-    } else if (STR_EQUAL(name, "MapObjSwitch")) {
-        actorInfo->mShouldRandomize = true;
-        actorInfo->mIsSurfaceBound  = true;
-        actorInfo->mIsSwitchObj     = true;
-    } else if (STR_EQUAL(name, "NozzleBox")) {
-        actorInfo->mShouldRandomize     = true;
-        actorInfo->mIsGroundValid       = true;
-        actorInfo->mIsWaterValid        = false;
-        actorInfo->mIsUnderwaterValid   = false;
-        actorInfo->mShouldResizeUniform = false;
-        actorInfo->mShouldResizeXZ      = false;
-        actorInfo->mShouldResizeY       = false;
-        actorInfo->mShouldRotateXZ      = false;
-        actorInfo->mShouldRotateY       = true;
-    } else if (STR_EQUAL(name, "Mario")) {
-        actorInfo->mShouldRandomize     = isMarioRandomizable(*gpMarDirector, reinterpret_cast<TMario *>(actor));
-        actorInfo->mIsGroundValid       = true;
-        actorInfo->mIsWaterValid        = true;
-        actorInfo->mIsUnderwaterValid   = true;
-        actorInfo->mShouldResizeUniform = true;
-        actorInfo->mShouldResizeXZ      = false;
-        actorInfo->mShouldResizeY       = false;
-        actorInfo->mShouldRotateXZ      = false;
-        actorInfo->mShouldRotateY       = true;
-    }
+    HitActorInfo &actorInfo     = getRandomizerInfo(actor);
+    actorInfo.mObjectType      = name;
 
     return actor;
 }
-SMS_PATCH_BL(SMS_PORT_REGION(0x802FA628, 0, 0, 0), collectGeneralActors);
+SMS_PATCH_BL(SMS_PORT_REGION(0x802FA628, 0, 0, 0), collectObjectTypes);
+
+/* Allocate extra memory for a larger capacity of ObjHitChecks */
+/* Fixes crashes in Bianco Hills due to too many objs near each other at once */
+SMS_WRITE_32(SMS_PORT_REGION(0x8021B340, 0, 0, 0), 0x60638004);  // Allocate about 1.8x memory
+SMS_WRITE_32(SMS_PORT_REGION(0x8021B354, 0, 0, 0), 0x38E03000);  // Allocate about 1.8x array slices
 
 #undef STR_EQUAL
-
-static void *collectMapStaticObj(void *vtable) {
-    TMapObjBase *actor;
-    SMS_FROM_GPR(31, actor);
-
-    *(void **)actor = vtable;
-
-    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-    actorInfo->mShouldRandomize = false;
-    return vtable;
-}
-SMS_PATCH_BL(SMS_PORT_REGION(0x80195DA0, 0, 0, 0), collectMapStaticObj);
-
-static void *collectMapObjFlag(void *vtable) {
-    TMapObjGeneral *actor;
-    SMS_FROM_GPR(31, actor);
-
-    *(void **)actor = vtable;
-
-    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-    actorInfo->mShouldRandomize = false;
-
-    return vtable;
-}
-SMS_PATCH_BL(SMS_PORT_REGION(0x801DBE14, 0, 0, 0), collectMapObjFlag);
-
-static void *collectMapObjGrass(void *vtable) {
-    THitActor *actor;
-    SMS_FROM_GPR(31, actor);
-
-    *(void **)actor = vtable;
-
-    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-    actorInfo->mShouldRandomize = false;
-    return vtable;
-}
-SMS_PATCH_BL(SMS_PORT_REGION(0x801E95B8, 0, 0, 0), collectMapObjGrass);
-
-//static void *collectMapObjWaterSpray(void *vtable) {
-//    THitActor *actor;
-//    SMS_FROM_GPR(31, actor);
-//
-//    *(void **)actor = vtable;
-//
-//    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-//    actorInfo->mShouldRandomize = false;
-//    return vtable;
-//}
-//SMS_PATCH_BL(SMS_PORT_REGION(0x801C10BC, 0, 0, 0), collectMapObjGrass);
-//
-//static void collectMapObjSmokeLoad(TMapObjBase *actor, JSUMemoryInputStream &in) {
-//    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-//    actorInfo->mShouldRandomize = false;
-//    load__12TMapObjSmokeFR20JSUMemoryInputStream(actor, &in);
-//}
-//SMS_PATCH_BL(SMS_PORT_REGION(0x801e71d0, 0, 0, 0), collectMapObjSmokeLoad);
-
-static void collectMapObjChangeStage(TMapObjBase *actor, JSUMemoryInputStream &in) {
-    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-    actorInfo->mShouldRandomize = false;
-    load__11TMapObjBaseFR20JSUMemoryInputStream(actor, &in);
-}
-SMS_PATCH_BL(SMS_PORT_REGION(0x801C173C, 0, 0, 0), collectMapObjChangeStage);
-
-static void collectMapObjStartDemoLoad(TItem *actor, JSUMemoryInputStream &in) {
-    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-    actorInfo->mShouldRandomize = false;
-    load__11TMapObjBaseFR20JSUMemoryInputStream(actor, &in);
-}
-SMS_PATCH_BL(SMS_PORT_REGION(0x801C15E4, 0, 0, 0), collectMapObjStartDemoLoad);
-
-static void *collectBellWatermill(void *vtable) {
-    TMapObjGeneral *actor;
-    SMS_FROM_GPR(31, actor);
-
-    *(void **)actor = vtable;
-
-    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-    actorInfo->mShouldRandomize = false;
-
-    return vtable;
-}
-SMS_PATCH_BL(SMS_PORT_REGION(0x801C4B0C, 0, 0, 0), collectBellWatermill);
-
-static bool clipActorsScaled(JDrama::TGraphics *graphics, const Vec *point, f32 radius) {
-    TLiveActor *actor;
-    SMS_FROM_GPR(31, actor);
-    
-    return ViewFrustumClipCheck__FPQ26JDrama9TGraphicsP3Vecf(
-        graphics, point, radius * Max(Max(actor->mSize.x, actor->mSize.y), actor->mSize.z));
-} SMS_PATCH_BL(SMS_PORT_REGION(0x8021B144, 0, 0, 0), clipActorsScaled);

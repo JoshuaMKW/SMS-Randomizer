@@ -3,30 +3,59 @@
 #include <Dolphin/types.h>
 
 #include <BetterSMS/settings.hxx>
+#include <BetterSMS/module.hxx>
 
 using namespace BetterSMS;
 
-class PrintUIntSetting : public Settings::IntSetting {
+class RandomWarpSetting : public Settings::IntSetting {
 public:
-    PrintUIntSetting() = delete;
-    PrintUIntSetting(const char *name, void *valuePtr) : IntSetting(name, valuePtr) {}
-    ~PrintUIntSetting() override {}
+    enum State { OFF, LOCAL, GLOBAL };
 
-    void getValueStr(char *dst) const override { snprintf(dst, 11, "%lu", static_cast<u32>(getInt())); }
+    RandomWarpSetting(const char *name) : IntSetting(name, &RandomWarpSetting::sStateValue) {
+        mValueRange = {0, 2, 1};
+    }
+    ~RandomWarpSetting() override {}
+
+    void getValueStr(char *dst) const override {
+        switch (getInt()) {
+        default:
+        case State::OFF:
+            strncpy(dst, "Off", 4);
+            break;
+        case State::LOCAL:
+            strncpy(dst, "Local", 6);
+            break;
+        case State::GLOBAL:
+            strncpy(dst, "Global", 7);
+            break;
+        }
+    }
+
+private:
+    static int sStateValue;
 };
 
-extern Settings::SettingsGroup gSettingsGroup;
+class RandomMirrorModeSetting : public Settings::SwitchSetting {
+public:
+    RandomMirrorModeSetting(const char *name)
+        : SwitchSetting(name, &RandomMirrorModeSetting::sStateValue) {}
 
-extern PrintUIntSetting gGameSeedSetting;
-extern Settings::SwitchSetting gRandomizeCollectiblesSetting;
-extern Settings::SwitchSetting gRandomizeObjectsSetting;
-extern Settings::SwitchSetting gRandomizeEnemiesSetting;
-extern Settings::SwitchSetting gRandomizeWarpsSetting;
-extern Settings::SwitchSetting gRandomizeScaleSetting;
-extern Settings::SwitchSetting gRandomizeColorsSetting;
-extern Settings::SwitchSetting gRandomizeMusicSetting;
-extern Settings::SwitchSetting gRandomizeExStageSetting;
-extern Settings::SwitchSetting gRandomizeHPDamageSetting;
+    bool isUnlocked() const override { return BetterSMS::isModuleRegistered("Mirror Mode"); }
 
-extern const u8 gSaveBnr[];
-extern const u8 gSaveIcon[];
+private:
+    static bool sStateValue;
+};
+
+namespace Randomizer {
+    u32 getGameSeed();
+    bool isRandomCollectibles();
+    bool isRandomObjects();
+    bool isRandomEnemies();
+    bool isRandomScale();
+    bool isRandomColors();
+    bool isRandomMusic();
+    bool isRandomExStage();
+    bool isRandomHPDamage();
+    bool isRandomMirrorMode();
+    RandomWarpSetting::State getRandomWarpsState();
+}

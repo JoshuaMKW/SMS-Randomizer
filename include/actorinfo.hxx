@@ -28,8 +28,10 @@ struct HitActorInfo {
     bool mIsSprayableObj      : 1;
     bool mIsSwitchObj         : 1;
     bool mIsExLinear          : 1;
+    const char *mObjectType;
+    const char *mObjectKey;
     s16 mFromSurfaceDist   = 0;
     TVec3s mAdjustRotation;
 };
 
-HitActorInfo *getRandomizerInfo(THitActor *actor);
+HitActorInfo &getRandomizerInfo(THitActor *actor);

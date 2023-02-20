@@ -43,9 +43,10 @@ static u32 sMusicChoices[] = {
  //SMS_PATCH_BL(SMS_PORT_REGION(0x802B7A4C, 0, 0, 0), setRandomMSoundEnterStage);
 
 static void setRandomMSoundEnterStage(u32 musicID) {
-    if (gRandomizeMusicSetting.getBool()) {
-        srand32((gpMarDirector->mAreaID * 0x41C64E6D + 0x3039) * getGameSeed());
-        MSBgm::startBGM(sMusicChoices[lerp<u32>(0, 20, randLerp())]);
+    if (Randomizer::isRandomMusic()) {
+        Randomizer::srand32((gpMarDirector->mAreaID * 0x41C64E6D + 0x3039) *
+                            Randomizer::getGameSeed());
+        MSBgm::startBGM(sMusicChoices[lerp<u32>(0, 20, Randomizer::randLerp())]);
     }
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x802BB760, 0, 0, 0), setRandomMSoundEnterStage);

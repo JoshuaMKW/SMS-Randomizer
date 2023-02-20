@@ -8,15 +8,15 @@
 #include "settings.hxx"
 
 void setPlayerInitialHealth(TMario* player, bool isMario) {
-    if (!isMario || !gRandomizeHPDamageSetting.getBool())
+    if (!isMario || !Randomizer::isRandomHPDamage())
         return;
 
-    player->mHealth = lerp<u16>(1, 8, randLerp());
+    player->mHealth = static_cast<u16>(lerp<f32>(1.0f, 8.99f, Randomizer::randLerp()));
 }
 
 static void randomizeDecHP(TMario *player, int loss) {
-    if (gRandomizeHPDamageSetting.getBool()) {
-        loss = lerp<int>(1, 7, randLerp());
+    if (Randomizer::isRandomHPDamage()) {
+        loss = static_cast<int>(lerp<f32>(1.0f, 7.99f, Randomizer::randLerp()));
     }
     player->decHP(loss);
 }

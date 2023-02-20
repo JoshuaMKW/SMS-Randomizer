@@ -20,10 +20,12 @@
 #include "seed.hxx"
 #include "settings.hxx"
 
+extern u32 getColorSeed();
+
 #define _SHIFTL(v, s, w)((u32)(((u32)(v) & ((0x01 << (w)) - 1)) << (s)))  //mask the first w bits of v before lshifting
 
 static void randomizeGXTevColor(u8 tevstage, GXColor *color) {
-    if (gRandomizeColorsSetting.getBool()) {
+    if (Randomizer::isRandomColors()) {
         const u32 seed = getColorSeed();
         *(u32 *)color ^= (seed * 0x41C64E6D) & 0xFFFFFF00;
     }
@@ -42,7 +44,7 @@ static void randomizeGXTevColor(u8 tevstage, GXColor *color) {
 SMS_PATCH_B(SMS_PORT_REGION(0x80361510, 0, 0, 0), randomizeGXTevColor);
 
 static void randomizeTevBlock2ColorS10(J3DTevBlock2 *block, u8 tevstage, GXColorS10 *color) {
-    if (gRandomizeColorsSetting.getBool()) {
+    if (Randomizer::isRandomColors()) {
         const u32 seed = getColorSeed();
         ((u32 *)color)[0] ^= (seed * 0x41C64E6D);
         ((u32 *)color)[1] ^= (seed * 0x51E3102A) & 0xFFFFFF00;
@@ -54,7 +56,7 @@ SMS_PATCH_B(SMS_PORT_REGION(0x802DC35C, 0, 0, 0), randomizeTevBlock2ColorS10);
 SMS_PATCH_B(SMS_PORT_REGION(0x802DC378, 0, 0, 0), randomizeTevBlock2ColorS10);
 
 static void randomizeTevBlock4ColorS10(J3DTevBlock4 *block, u8 tevstage, GXColorS10 *color) {
-    if (gRandomizeColorsSetting.getBool()) {
+    if (Randomizer::isRandomColors()) {
         const u32 seed = getColorSeed();
         ((u32 *)color)[0] ^= (seed * 0x41C64E6D);
         ((u32 *)color)[1] ^= (seed * 0x51E3102A) & 0xFFFFFF00;
@@ -66,7 +68,7 @@ SMS_PATCH_B(SMS_PORT_REGION(0x802DBF88, 0, 0, 0), randomizeTevBlock4ColorS10);
 SMS_PATCH_B(SMS_PORT_REGION(0x802DBFA4, 0, 0, 0), randomizeTevBlock4ColorS10);
 
 static void randomizeTevBlock16ColorS10(J3DTevBlock16 *block, u8 tevstage, GXColorS10 *color) {
-    if (gRandomizeColorsSetting.getBool()) {
+    if (Randomizer::isRandomColors()) {
         const u32 seed = getColorSeed();
         ((u32 *)color)[0] ^= (seed * 0x41C64E6D);
         ((u32 *)color)[1] ^= (seed * 0x51E3102A) & 0xFFFFFF00;
@@ -78,7 +80,7 @@ SMS_PATCH_B(SMS_PORT_REGION(0x802DBBB4, 0, 0, 0), randomizeTevBlock16ColorS10);
 SMS_PATCH_B(SMS_PORT_REGION(0x802DBBD0, 0, 0, 0), randomizeTevBlock16ColorS10);
 
 static void randomizeTevBlock2KColorS10(J3DTevBlock2 *block, u8 tevstage, GXColor *color) {
-    if (gRandomizeColorsSetting.getBool()) {
+    if (Randomizer::isRandomColors()) {
         const u32 seed = getColorSeed();
         *(u32 *)color ^= (seed * 0x41C64E6D) & 0xFFFFFF00;
     }
@@ -89,7 +91,7 @@ SMS_PATCH_B(SMS_PORT_REGION(0x802DC3A8, 0, 0, 0), randomizeTevBlock2KColorS10);
 SMS_PATCH_B(SMS_PORT_REGION(0x802DC3BC, 0, 0, 0), randomizeTevBlock2KColorS10);
 
 static void randomizeTevBlock4KColorS10(J3DTevBlock4 *block, u8 tevstage, GXColor *color) {
-    if (gRandomizeColorsSetting.getBool()) {
+    if (Randomizer::isRandomColors()) {
         const u32 seed = getColorSeed();
         *(u32 *)color ^= (seed * 0x41C64E6D) & 0xFFFFFF00;
     }
@@ -100,7 +102,7 @@ SMS_PATCH_B(SMS_PORT_REGION(0x802DBFD4, 0, 0, 0), randomizeTevBlock4KColorS10);
 SMS_PATCH_B(SMS_PORT_REGION(0x802DBFE8, 0, 0, 0), randomizeTevBlock4KColorS10);
 
 static void randomizeTevBlock16KColorS10(J3DTevBlock16 *block, u8 tevstage, GXColor *color) {
-    if (gRandomizeColorsSetting.getBool()) {
+    if (Randomizer::isRandomColors()) {
         const u32 seed = getColorSeed();
         *(u32 *)color ^= (seed * 0x41C64E6D) & 0xFFFFFF00;
     }

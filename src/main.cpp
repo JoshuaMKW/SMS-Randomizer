@@ -15,27 +15,44 @@
 #include <BetterSMS/stage.hxx>
 #include <BetterSMS/loading.hxx>
 #include <BetterSMS/settings.hxx>
-#include <BetterSMS/icons.hxx>
 
 #include "settings.hxx"
+#include "p_settings.hxx"
 
 extern void initActorInfoMap(TMarDirector *);
 extern void initMapLoadStatus(TMarDirector *);
 extern void initGameSeed(TApplication *);
-extern void setPlayerInitialHealth(TMario *player, bool isMario);
+extern void initDefaultSolver(TApplication *);
+extern void randomizeMirrorMode(TMarDirector *director);
+extern void setPlayerInitialHealth(TMario *, bool);
+extern void emitHintEffectForHideObjs(TMarDirector *);
+
+extern PrintUIntSetting gGameSeedSetting;
+extern Settings::SwitchSetting gRandomizeCollectiblesSetting;
+extern Settings::SwitchSetting gRandomizeObjectsSetting;
+extern Settings::SwitchSetting gRandomizeEnemiesSetting;
+extern Settings::SwitchSetting gRandomizeWarpsSetting;
+extern Settings::SwitchSetting gRandomizeScaleSetting;
+extern Settings::SwitchSetting gRandomizeColorsSetting;
+extern Settings::SwitchSetting gRandomizeMusicSetting;
+extern Settings::SwitchSetting gRandomizeExStageSetting;
+extern Settings::SwitchSetting gRandomizeHPDamageSetting;
+extern RandomMirrorModeSetting gRandomizeMirrorModeSetting;
 
 // Module definition
 
 BetterSMS::ModuleInfo sModuleInfo{"Randomizer", 1, 0, &gSettingsGroup};
 
 static void initModule() {
-    OSReport("Initializing Randomizer...\n");
-
     // Register callbacks
-    BetterSMS::Game::registerOnBootCallback("Randomizer_InitGameSeed", initGameSeed);
+    BetterSMS::Game::registerBootCallback("Randomizer_InitGameSeed", initGameSeed);
+    BetterSMS::Game::registerBootCallback("Randomizer_InitDefaultSolver", initDefaultSolver);
     BetterSMS::Stage::registerInitCallback("Randomizer_MapLoadActorInit", initActorInfoMap);
     BetterSMS::Stage::registerInitCallback("Randomizer_MapLoadStatusInit", initMapLoadStatus);
-    BetterSMS::Player::registerInitProcess("Randomizer_PlayerHealthInit", setPlayerInitialHealth);
+    BetterSMS::Stage::registerInitCallback("Randomizer_RandomizeMirrorMode", randomizeMirrorMode);
+    BetterSMS::Player::registerInitCallback("Randomizer_PlayerHealthInit", setPlayerInitialHealth);
+    BetterSMS::Stage::registerUpdateCallback("Randomizer_EmitHideObjEffects",
+                                             emitHintEffectForHideObjs);
 
     // Register settings
     gSettingsGroup.addSetting(&gGameSeedSetting);
@@ -48,36 +65,33 @@ static void initModule() {
     gSettingsGroup.addSetting(&gRandomizeMusicSetting);
     gSettingsGroup.addSetting(&gRandomizeExStageSetting);
     gSettingsGroup.addSetting(&gRandomizeHPDamageSetting);
+    gSettingsGroup.addSetting(&gRandomizeMirrorModeSetting);
     {
         auto &saveInfo        = gSettingsGroup.getSaveInfo();
-        saveInfo.mSaveName    = gSettingsGroup.getName();
+        saveInfo.mSaveName    = Settings::getGroupName(gSettingsGroup);
         saveInfo.mBlocks      = 1;
         saveInfo.mGameCode    = 'GMSB';
         saveInfo.mCompany     = 0x3031;  // '01'
         saveInfo.mBannerFmt   = CARD_BANNER_CI;
-        saveInfo.mBannerImage = GetResourceTextureHeader(gSaveBnr);
+        saveInfo.mBannerImage = reinterpret_cast<const ResTIMG *>(gSaveBnr);
         saveInfo.mIconFmt     = CARD_ICON_CI;
         saveInfo.mIconSpeed   = CARD_SPEED_SLOW;
         saveInfo.mIconCount   = 2;
-        saveInfo.mIconTable   = GetResourceTextureHeader(gSaveIcon);
+        saveInfo.mIconTable   = reinterpret_cast<const ResTIMG *>(gSaveIcon);
         saveInfo.mSaveGlobal  = false;
     }
 
-    // Register module
-    BetterSMS::registerModule("Randomizer", &sModuleInfo);
+    BetterSMS::registerModule(&sModuleInfo);
 }
 
 static void deinitModule() {
-    OSReport("Deinitializing Module...\n");
-
     // Cleanup callbacks
-    BetterSMS::Stage::deregisterInitCallback("OurModule_StageInitCallBack");
-    BetterSMS::Stage::deregisterUpdateCallback("OurModule_StageUpdateCallBack");
-    BetterSMS::Stage::deregisterDraw2DCallback("OurModule_StageDrawCallBack");
+
+    BetterSMS::deregisterModule(&sModuleInfo);
 }
 
 // Definition block
-KURIBO_MODULE_BEGIN("OurModule", "JoshuaMK", "v1.0") {
+KURIBO_MODULE_BEGIN("Randomizer", "JoshuaMK", "v1.0") {
     // Set the load and unload callbacks to our registration functions
     KURIBO_EXECUTE_ON_LOAD { initModule(); }
     KURIBO_EXECUTE_ON_UNLOAD { deinitModule(); }

@@ -16,8 +16,8 @@
 static TMapObjBase *collectBossHanachan(TMapObjBase *actor, const char *name) {
     __ct__11TSpineEnemyFPCc(actor, name);
 
-    HitActorInfo *actorInfo     = getRandomizerInfo(actor);
-    actorInfo->mShouldRandomize = false;
+    HitActorInfo &actorInfo     = getRandomizerInfo(actor);
+    actorInfo.mShouldRandomize = false;
 
     return actor;
 }

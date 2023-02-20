@@ -18,18 +18,18 @@ static void *collectLampTraps(void *vtable) {
 
     *(void **)actor = vtable;
 
-    HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromSurfaceDist    = -2000;
-    actorInfo->mShouldRandomize     = gRandomizeObjectsSetting.getBool();
-    actorInfo->mIsItemObj           = false;
-    actorInfo->mIsUnderwaterValid   = true;
-    actorInfo->mIsWaterValid        = true;
-    actorInfo->mIsGroundValid       = true;
-    actorInfo->mShouldResizeUniform = false;
-    actorInfo->mShouldResizeY       = false;
-    actorInfo->mShouldResizeXZ      = false;
-    actorInfo->mShouldRotateY       = true;
-    actorInfo->mShouldRotateXZ      = false;
+    HitActorInfo &actorInfo         = getRandomizerInfo(actor);
+    actorInfo.mFromSurfaceDist    = -2000;
+    actorInfo.mShouldRandomize     = Randomizer::isRandomObjects();
+    actorInfo.mIsItemObj           = false;
+    actorInfo.mIsUnderwaterValid   = true;
+    actorInfo.mIsWaterValid        = true;
+    actorInfo.mIsGroundValid       = true;
+    actorInfo.mShouldResizeUniform = false;
+    actorInfo.mShouldResizeY       = false;
+    actorInfo.mShouldResizeXZ      = false;
+    actorInfo.mShouldRotateY       = true;
+    actorInfo.mShouldRotateXZ      = false;
     return vtable;
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x802016A0, 0, 0, 0), collectLampTraps);

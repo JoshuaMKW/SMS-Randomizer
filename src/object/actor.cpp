@@ -13,18 +13,18 @@
 #include "settings.hxx"
 
 static THitActor *collectHitActor(THitActor *actor) {
-    HitActorInfo *actorInfo         = getRandomizerInfo(actor);
-    actorInfo->mFromSurfaceDist    = 0;
-    actorInfo->mShouldRandomize     = gRandomizeObjectsSetting.getBool();
-    actorInfo->mIsItemObj           = false;
-    actorInfo->mIsUnderwaterValid   = false;
-    actorInfo->mIsWaterValid        = false;
-    actorInfo->mIsGroundValid       = true;
-    actorInfo->mShouldResizeUniform = true;
-    actorInfo->mShouldResizeY       = true;
-    actorInfo->mShouldResizeXZ      = true;
-    actorInfo->mShouldRotateY       = true;
-    actorInfo->mShouldRotateXZ      = false;
+    HitActorInfo &actorInfo         = getRandomizerInfo(actor);
+    actorInfo.mFromSurfaceDist    = 0;
+    actorInfo.mShouldRandomize     = Randomizer::isRandomObjects();
+    actorInfo.mIsItemObj           = false;
+    actorInfo.mIsUnderwaterValid   = false;
+    actorInfo.mIsWaterValid        = false;
+    actorInfo.mIsGroundValid       = true;
+    actorInfo.mShouldResizeUniform = true;
+    actorInfo.mShouldResizeY       = true;
+    actorInfo.mShouldResizeXZ      = true;
+    actorInfo.mShouldRotateY       = true;
+    actorInfo.mShouldRotateXZ      = false;
 
     actor->mObjectType = 0;
     return actor;
@@ -32,18 +32,18 @@ static THitActor *collectHitActor(THitActor *actor) {
 SMS_PATCH_BL(SMS_PORT_REGION(0x80223F74, 0, 0, 0), collectHitActor);
 
 static TMapObjGeneral *collectMapObjGeneral(TMapObjGeneral *actor) {
-    HitActorInfo *actorInfo = getRandomizerInfo(actor);
-    actorInfo->mFromSurfaceDist    = 0;
-    actorInfo->mShouldRandomize     = gRandomizeObjectsSetting.getBool();
-    actorInfo->mIsItemObj           = false;
-    actorInfo->mIsUnderwaterValid   = false;
-    actorInfo->mIsWaterValid        = false;
-    actorInfo->mIsGroundValid       = true;
-    actorInfo->mShouldResizeUniform = true;
-    actorInfo->mShouldResizeY       = true;
-    actorInfo->mShouldResizeXZ      = true;
-    actorInfo->mShouldRotateY       = true;
-    actorInfo->mShouldRotateXZ      = false;
+    HitActorInfo &actorInfo = getRandomizerInfo(actor);
+    actorInfo.mFromSurfaceDist    = 0;
+    actorInfo.mShouldRandomize     = Randomizer::isRandomObjects();
+    actorInfo.mIsItemObj           = false;
+    actorInfo.mIsUnderwaterValid   = false;
+    actorInfo.mIsWaterValid        = false;
+    actorInfo.mIsGroundValid       = true;
+    actorInfo.mShouldResizeUniform = true;
+    actorInfo.mShouldResizeY       = true;
+    actorInfo.mShouldResizeXZ      = true;
+    actorInfo.mShouldRotateY       = true;
+    actorInfo.mShouldRotateXZ      = false;
 
     actor->_04 = 0.0f;
     return actor;
