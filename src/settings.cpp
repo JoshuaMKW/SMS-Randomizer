@@ -42,6 +42,20 @@ Settings::SwitchSetting gRandomizeHPDamageSetting("Randomize HP/Damage",
 
 RandomMirrorModeSetting gRandomizeMirrorModeSetting("Randomize Mirror Mode");
 
+void initSettings(Settings::SettingsGroup& group) {
+    group.addSetting(&gGameSeedSetting);
+    group.addSetting(&gRandomizeCollectiblesSetting);
+    group.addSetting(&gRandomizeObjectsSetting);
+    group.addSetting(&gRandomizeEnemiesSetting);
+    group.addSetting(&gRandomizeWarpsSetting);
+    group.addSetting(&gRandomizeScaleSetting);
+    group.addSetting(&gRandomizeColorsSetting);
+    group.addSetting(&gRandomizeMusicSetting);
+    group.addSetting(&gRandomizeExStageSetting);
+    group.addSetting(&gRandomizeHPDamageSetting);
+    group.addSetting(&gRandomizeMirrorModeSetting);
+}
+
 namespace Randomizer {
     u32 getGameSeed() { return gGameSeedSetting.getInt(); }
     bool isRandomCollectibles() { return gRandomizeCollectiblesSetting.getBool(); }

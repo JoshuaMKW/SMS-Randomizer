@@ -27,17 +27,10 @@ extern void randomizeMirrorMode(TMarDirector *director);
 extern void setPlayerInitialHealth(TMario *, bool);
 extern void emitHintEffectForHideObjs(TMarDirector *);
 
-extern PrintUIntSetting gGameSeedSetting;
-extern Settings::SwitchSetting gRandomizeCollectiblesSetting;
-extern Settings::SwitchSetting gRandomizeObjectsSetting;
-extern Settings::SwitchSetting gRandomizeEnemiesSetting;
-extern Settings::SwitchSetting gRandomizeWarpsSetting;
-extern Settings::SwitchSetting gRandomizeScaleSetting;
-extern Settings::SwitchSetting gRandomizeColorsSetting;
-extern Settings::SwitchSetting gRandomizeMusicSetting;
-extern Settings::SwitchSetting gRandomizeExStageSetting;
-extern Settings::SwitchSetting gRandomizeHPDamageSetting;
-extern RandomMirrorModeSetting gRandomizeMirrorModeSetting;
+extern void initSettings(Settings::SettingsGroup &group);
+
+
+extern void recalculateObjectsWhenEulerChange(TMarDirector *director);
 
 // Module definition
 
@@ -45,32 +38,21 @@ BetterSMS::ModuleInfo sModuleInfo{"Randomizer", 1, 0, &gSettingsGroup};
 
 static void initModule() {
     // Register callbacks
-    BetterSMS::Game::registerBootCallback("Randomizer_InitGameSeed", initGameSeed);
-    BetterSMS::Game::registerBootCallback("Randomizer_InitDefaultSolver", initDefaultSolver);
-    BetterSMS::Stage::registerInitCallback("Randomizer_MapLoadActorInit", initActorInfoMap);
-    BetterSMS::Stage::registerInitCallback("Randomizer_MapLoadStatusInit", initMapLoadStatus);
-    BetterSMS::Stage::registerInitCallback("Randomizer_RandomizeMirrorMode", randomizeMirrorMode);
-    BetterSMS::Player::registerInitCallback("Randomizer_PlayerHealthInit", setPlayerInitialHealth);
-    BetterSMS::Stage::registerUpdateCallback("Randomizer_EmitHideObjEffects",
-                                             emitHintEffectForHideObjs);
+    BetterSMS::Game::addBootCallback(initGameSeed);
+    BetterSMS::Game::addBootCallback(initDefaultSolver);
+    BetterSMS::Stage::addInitCallback(initActorInfoMap);
+    BetterSMS::Stage::addInitCallback(initMapLoadStatus);
+    BetterSMS::Stage::addInitCallback(randomizeMirrorMode);
+    BetterSMS::Player::addInitCallback(setPlayerInitialHealth);
+    BetterSMS::Stage::addUpdateCallback(emitHintEffectForHideObjs);
 
     // Register settings
-    gSettingsGroup.addSetting(&gGameSeedSetting);
-    gSettingsGroup.addSetting(&gRandomizeCollectiblesSetting);
-    gSettingsGroup.addSetting(&gRandomizeObjectsSetting);
-    gSettingsGroup.addSetting(&gRandomizeEnemiesSetting);
-    gSettingsGroup.addSetting(&gRandomizeWarpsSetting);
-    gSettingsGroup.addSetting(&gRandomizeScaleSetting);
-    gSettingsGroup.addSetting(&gRandomizeColorsSetting);
-    gSettingsGroup.addSetting(&gRandomizeMusicSetting);
-    gSettingsGroup.addSetting(&gRandomizeExStageSetting);
-    gSettingsGroup.addSetting(&gRandomizeHPDamageSetting);
-    gSettingsGroup.addSetting(&gRandomizeMirrorModeSetting);
+    initSettings(gSettingsGroup);
     {
         auto &saveInfo        = gSettingsGroup.getSaveInfo();
-        saveInfo.mSaveName    = Settings::getGroupName(gSettingsGroup);
+        saveInfo.mSaveName    = "Sunshine Randomizer";
         saveInfo.mBlocks      = 1;
-        saveInfo.mGameCode    = 'GMSB';
+        saveInfo.mGameCode    = 'GMSR';
         saveInfo.mCompany     = 0x3031;  // '01'
         saveInfo.mBannerFmt   = CARD_BANNER_CI;
         saveInfo.mBannerImage = reinterpret_cast<const ResTIMG *>(gSaveBnr);
@@ -81,19 +63,12 @@ static void initModule() {
         saveInfo.mSaveGlobal  = false;
     }
 
-    BetterSMS::registerModule(&sModuleInfo);
-}
-
-static void deinitModule() {
-    // Cleanup callbacks
-
-    BetterSMS::deregisterModule(&sModuleInfo);
+    BetterSMS::registerModule(sModuleInfo);
 }
 
 // Definition block
 KURIBO_MODULE_BEGIN("Randomizer", "JoshuaMK", "v1.0") {
     // Set the load and unload callbacks to our registration functions
     KURIBO_EXECUTE_ON_LOAD { initModule(); }
-    KURIBO_EXECUTE_ON_UNLOAD { deinitModule(); }
 }
 KURIBO_MODULE_END()

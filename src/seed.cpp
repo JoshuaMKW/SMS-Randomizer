@@ -22,6 +22,12 @@ namespace Randomizer {
     f32 randLerp() { return static_cast<f32>(rand32()) / 4294967295.0f; }
 
     bool tryChance(f32 percent) { return randLerp() < percent * 0.01; }
+
+    u32 levelScramble(u32 value, u32 uid, bool byEpisode) {
+        if (byEpisode)
+            return (value ^ ((gpMarDirector->mAreaID << 8) | gpMarDirector->mEpisodeID)) * uid;
+        return (value ^ (gpMarDirector->mAreaID << 8)) * uid;
+    }
 }  // namespace Randomizer
 
 void gameSeedChanged(void *old, void *cur, Settings::SingleSetting::ValueKind kind) {

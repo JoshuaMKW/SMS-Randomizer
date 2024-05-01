@@ -9,4 +9,5 @@ namespace Randomizer {
 	u32 rand32();
 	f32 randLerp();
 	bool tryChance(f32 percent);
+    u32 levelScramble(u32 value, u32 uid, bool byEpisode);
 }

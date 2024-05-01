@@ -16,7 +16,7 @@ public:
     }
     ~RandomWarpSetting() override {}
 
-    void getValueStr(char *dst) const override {
+    void getValueName(char *dst) const override {
         switch (getInt()) {
         default:
         case State::OFF:

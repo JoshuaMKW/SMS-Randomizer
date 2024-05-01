@@ -17,14 +17,38 @@
 #include "actorinfo.hxx"
 #include "seed.hxx"
 #include "settings.hxx"
+#include "solver.hxx"
 
 #define STR_EQUAL(a, b) strcmp(a, b) == 0
+
+#pragma region MapObjBehaviors
+
+static void forceMTXUpdate(MActor *actor) {
+    TLiveActor *obj;
+    SMS_FROM_GPR(27, obj);
+
+    J3DModel *model = actor->mModel;
+    if (!model)
+		return;
+    
+    if (model->mModelData->mDrawMtxData.mJointCount != 0) {
+        /*MsMtxSetTRS__FPA4_ffffffffff(model->mJointArray[*model->mModelData->mCurrentJointIndex],
+            obj->mTranslation.x, obj->mTranslation.y, obj->mTranslation.z, obj->mRotation.x,
+            obj->mRotation.y, obj->mRotation.z, obj->mScale.x, obj->mScale.y, obj->mScale.z);*/
+        /*J3DMTXConcatArrayIndexedSrc__FPA4_CfPA3_A4_CfPCUsPA3_A4_fUl(
+            (u32 *)0x804045DC, model->mJointArray, model->mModelData->mCurrentJointIndex,
+            ((u32 *)model->_64)[model->_7C], model->mModelData->mDrawMtxData.mJointCount);*/
+    }
+    model->viewCalc();
+}
+SMS_PATCH_BL(SMS_PORT_REGION(0x80217f90, 0, 0, 0), forceMTXUpdate);
 
 void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& actorInfo) {
     const char *objectType = actorInfo.mObjectType;
     const char *objectKey = actorInfo.mObjectKey;
 
     actorInfo.mShouldRandomize = Randomizer::isRandomObjects();
+    actorInfo.mIsWaterValid    = false;
 
     if (STR_EQUAL(objectType, "MapObjSmoke")) {  // Delfino Plaza
         actorInfo.mShouldRandomize = false;
@@ -37,6 +61,8 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
     } else if (STR_EQUAL(objectType, "MapObjChangeStage")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "MapObjStartDemoLoad")) {
+        actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjStartDemo")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "MapObjWaterSpray")) {
         actorInfo.mShouldRandomize = false;
@@ -302,6 +328,7 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
     } else if (STR_EQUAL(objectType, "MuddyBoat")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "Umaibou")) {
+        actorInfo.mExSpacialScale = 5.0f;
         actorInfo.mIsExLinear = true;
     } else if (STR_EQUAL(objectType, "RedCoinSwitch")) {
         actorInfo.mIsSurfaceBound  = true;
@@ -365,6 +392,9 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
     }
 }
 
+#pragma endregion
+#pragma region WarpHandlers
+
 static u16 *sStageWarps[32]{};
 static u16 sStageWarpsCollected = 0;
 
@@ -381,22 +411,22 @@ static u32 applyRandomStageWarps() {
     if (warpSetting == RandomWarpSetting::OFF)
         return SMSGetGameVideoHeight__Fv();
 
+    Randomizer::srand32(Randomizer::levelScramble(Randomizer::getGameSeed(), 0x51324217, false));
+
     if (warpSetting == RandomWarpSetting::LOCAL) {
-        u16 stageWarpIDs[32];
+        u16 stageWarpIDs[64];
         u32 warpSetFlags = 0;
 
     #define GET_FLAG(bits, idx) static_cast<bool>((bits & (1 << (idx))) >> idx)
     #define SET_FLAG(bits, idx, flag) static_cast<bool>(bits |= ((1 & flag) << (idx)))
 
-        Randomizer::srand32(gpMarDirector->mAreaID * 0x51324217 * Randomizer::getGameSeed());
-
         for (int i = 0; i < sStageWarpsCollected; ++i) {
             while (true) {
-                u32 id = lerp<f32>(0.0f, static_cast<f32>(sStageWarpsCollected) - 0.01f,
+                u32 n = lerp<f32>(0.0f, static_cast<f32>(sStageWarpsCollected) - 0.01f,
                                    Randomizer::randLerp());
-                if (!GET_FLAG(warpSetFlags, id)) {
-                    stageWarpIDs[id] = sStageWarps[i][0x138 / 2];
-                    SET_FLAG(warpSetFlags, id, true);
+                if (!GET_FLAG(warpSetFlags, n)) {
+                    stageWarpIDs[n] = sStageWarps[i][0x138 / 2];
+                    SET_FLAG(warpSetFlags, n, true);
                     break;
                 }
             }
@@ -414,44 +444,15 @@ static u32 applyRandomStageWarps() {
 
     // Global warps
 
+    const auto &warpIDs = Randomizer::getWarpIDWhiteList();
+    for (int i = 0; i < sStageWarpsCollected; ++i) {
+        u32 n = lerp<f32>(0.0f, static_cast<f32>(warpIDs.size()) - 0.01f, Randomizer::randLerp());
+        sStageWarps[i][0x138 / 2] = warpIDs.at(n);
+    }
+
     return SMSGetGameVideoHeight__Fv();
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x802B8B44, 0, 0, 0), applyRandomStageWarps);
-
-//static u32 applyRandomStageWarps() {
-//    if (!Randomizer::getRandomWarpsState())
-//        return SMSGetGameVideoHeight__Fv();
-//
-//    u16 stageWarpIDs[32];
-//    u32 warpSetFlags = 0;
-//
-//#define GET_FLAG(bits, idx)       static_cast<bool>((bits & (1 << (idx))) >> idx)
-//#define SET_FLAG(bits, idx, flag) static_cast<bool>(bits |= ((1 & flag) << (idx)))
-//
-//    Randomizer::srand32(gpMarDirector->mAreaID * 0x51324217 * Randomizer::getGameSeed());
-//
-//    for (int i = 0; i < sStageWarpsCollected; ++i) {
-//        while (true) {
-//            u32 id = lerp<f32>(0.0f, static_cast<f32>(sStageWarpsCollected) - 0.01f,
-//                               Randomizer::randLerp());
-//            if (!GET_FLAG(warpSetFlags, id)) {
-//                stageWarpIDs[id] = sStageWarps[i][0x138 / 2];
-//                SET_FLAG(warpSetFlags, id, true);
-//                break;
-//            }
-//        }
-//    }
-//
-//    for (int i = 0; i < sStageWarpsCollected; ++i) {
-//        sStageWarps[i][0x138 / 2] = stageWarpIDs[i];
-//    }
-//
-//#undef GET_FLAG
-//#undef SET_FLAG
-//
-//    return SMSGetGameVideoHeight__Fv();
-//}
-//SMS_PATCH_BL(SMS_PORT_REGION(0x802B8B44, 0, 0, 0), applyRandomStageWarps);
 
 static THitActor *collectObjectTypes(const TMarNameRefGen *gen, const char *name) {
     auto *actor = reinterpret_cast<THitActor *>(gen->getNameRef(name));
@@ -467,5 +468,7 @@ SMS_PATCH_BL(SMS_PORT_REGION(0x802FA628, 0, 0, 0), collectObjectTypes);
 /* Fixes crashes in Bianco Hills due to too many objs near each other at once */
 SMS_WRITE_32(SMS_PORT_REGION(0x8021B340, 0, 0, 0), 0x60638004);  // Allocate about 1.8x memory
 SMS_WRITE_32(SMS_PORT_REGION(0x8021B354, 0, 0, 0), 0x38E03000);  // Allocate about 1.8x array slices
+
+#pragma endregion
 
 #undef STR_EQUAL

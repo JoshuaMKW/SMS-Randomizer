@@ -15,7 +15,7 @@ public:
     }
     ~PrintUIntSetting() override {}
 
-    void getValueStr(char *dst) const override {
+    void getValueName(char *dst) const override {
         snprintf(dst, 11, "%lu", static_cast<u32>(getInt()));
     }
 };

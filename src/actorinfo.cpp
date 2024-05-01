@@ -31,6 +31,7 @@ HitActorInfo &getRandomizerInfo(THitActor *actor) {
         info.mIsExLinear          = false;
         info.mFromSurfaceDist     = 0;
         info.mAdjustRotation.set(0, 0, 0);
+        info.mSurfaceNormal.set(0, 1, 0);
     }
 
     return info;

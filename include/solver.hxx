@@ -5,10 +5,14 @@
 #include <JSystem/JDrama/JDRDisplay.hxx>
 #include <SMS/System/Application.hxx>
 #include <SMS/Map/MapCollisionData.hxx>
+#include <BetterSMS/libs/global_vector.hxx>
 
 #include "actorinfo.hxx"
+#include <BetterSMS/libs/triangle.hxx>
 
 namespace Randomizer {
+    const TGlobalVector<u16> &getWarpIDWhiteList();
+
     class BaseSolver {
     public:
         enum class PlaneSelection { FLOOR, ROOF, WALL, SKY };
@@ -19,8 +23,9 @@ namespace Randomizer {
         void setTarget(THitActor *actor);
         const HitActorInfo &getInfo() const { return mInfo; }
 
-        virtual size_t getSampleMax() const { return 1000; }
+        virtual size_t getSampleMax() const { return 100; }
 
+        virtual void init(TMarDirector *director) {}
         virtual bool solve(TMapCollisionData &collision) = 0;
 
         virtual void adjustSampledFloor(TVec3f &sampledPos, const TBGCheckData &floor) {}
@@ -61,6 +66,7 @@ namespace Randomizer {
         SMSSolver() = default;
         SMSSolver(THitActor *actor) : BaseSolver(actor) {}
 
+        void init(TMarDirector *director) override;
         bool solve(TMapCollisionData &collision) override;
 
         void adjustSampledFloor(TVec3f &sampledPos, const TBGCheckData &floor) override;
