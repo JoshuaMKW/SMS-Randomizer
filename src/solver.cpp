@@ -176,8 +176,7 @@ static void getSecretCourseStart(const TMarDirector &director, TVec3f &out) {
 extern void resetStageWarpInfo();
 
 void initMapLoadStatus(TMarDirector *director) {
-    Randomizer::ISolver *solver =
-        Randomizer::getSolver(director->mAreaID, director->mEpisodeID);
+    Randomizer::ISolver *solver = Randomizer::getSolver(director->mAreaID, director->mEpisodeID);
     solver->init(director);
 }
 
@@ -187,7 +186,7 @@ static void setMapLoaded(TMapCollisionStatic *staticCol) {
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x801896E0, 0, 0, 0), setMapLoaded);
 
-#define STR_EQUAL(a, b) strcmp(a, b) == 0
+#define STR_EQUAL(a, b) (strcmp(a, b) == 0)
 
 static f32 getAreaOfTriangle(const TVectorTriangle &triangle) {
     const f32 lengthA = PSVECDistance(triangle.a, triangle.b);
@@ -343,7 +342,7 @@ void Randomizer::getRandomizedScale(TVec3f &out, const HitActorInfo &actorInfo) 
 namespace Randomizer {
 
     void SMSSolver::sampleRandomFloor(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
-                                         TVec3f &outS) {
+                                      TVec3f &outS) {
         const bool isUnderwaterValid = mInfo.mIsUnderwaterValid;
         const bool isWaterValid      = mInfo.mIsWaterValid;
         const bool isGroundValid     = mInfo.mIsGroundValid;
@@ -374,7 +373,6 @@ namespace Randomizer {
             if (!isSampledFloorValid(target, *floor))
                 continue;
 
-            OSReport("Randomizer: Sampled floor at (%f, %f, %f)\n", target.x, target.y, target.z);
             outT = target;
 
             if (mInfo.mIsSurfaceBound || true) {
@@ -399,7 +397,7 @@ namespace Randomizer {
     }
 
     void SMSSolver::sampleRandomWall(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
-                                        TVec3f &outS) {
+                                     TVec3f &outS) {
         constexpr f32 gridFraction = 1.0f / 1024.0f;
 
         const TBGCheckData *staticWalls[256];
@@ -474,7 +472,7 @@ namespace Randomizer {
     }
 
     void SMSSolver::sampleRandomRoof(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
-                                        TVec3f &outS) {
+                                     TVec3f &outS) {
         constexpr f32 gridFraction = 1.0f / 1024.0f;
 
         const TBGCheckData *staticRoofs[256];
@@ -543,7 +541,7 @@ namespace Randomizer {
     }
 
     void SMSSolver::sampleRandomSky(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
-                                       TVec3f &outS) {
+                                    TVec3f &outS) {
         TVec3f target = TVec3f::zero();
         for (size_t i = 0; i < getSampleMax(); ++i) {
             const f32 fromGroundHeight = getFromGroundHeight(mInfo);
@@ -682,7 +680,7 @@ namespace Randomizer {
     }
 
     bool SMSSolver::solve(JDrama::TActor *actor, TMapCollisionData &collision) {
-        mActor = actor;
+        setTarget(actor);
 
         if (gpMarDirector->mAreaID == 4) {  // Collect Castle Warp
             if (STR_EQUAL(mInfo.mObjectKey, "\x83\x58\x83\x65\x81\x5B\x83\x57\x90\xD8\x91\xD6"
@@ -729,7 +727,7 @@ namespace Randomizer {
             (STR_EQUAL(mActor->mKeyName, "WoodBlockLarge 0") && gpMarDirector->mAreaID == 32)) {
             sSecretCourseHasEndPlatform = true;
             sSecretCourseShinePos       = mActor->mTranslation;
-            sSecretCourseShinePos.y += 200.0f * mActor->mScale.y;
+            sSecretCourseShinePos.y +=  200.0f * scaleLinearAtAnchor(mActor->mScale.y, 1.5f, 1.0f);
         }
 
         if (gpMarDirector->mAreaID == 4) {
@@ -746,7 +744,7 @@ namespace Randomizer {
         return true;
     }
 
-    void SMSSolver::setTarget(THitActor *actor) {
+    void SMSSolver::setTarget(JDrama::TActor *actor) {
         mActor           = actor;
         mInfo            = getRandomizerInfo(actor);
         mInfo.mObjectKey = mActor->mKeyName;
@@ -960,8 +958,6 @@ namespace Randomizer {
         const f32 wallArea =
             getAreaOfTriangle({wall.mVertices[0], wall.mVertices[1], wall.mVertices[2]});
 
-        OSReport("Area of triangle (%.02f cm)\n", wallArea);
-
         if (wallArea < 50000.0f)
             return false;
 
@@ -1113,7 +1109,7 @@ namespace Randomizer {
     }
 
     bool SMSSolver::isCurrentActorValid() const {
-        return STR_EQUAL(mActor->mKeyName, "randomizer_off");
+        return !STR_EQUAL(mActor->mKeyName, "randomizer_off");
     }
 
     void SMSSolver::solveStageObject(TMapCollisionData &collision) {
@@ -1247,7 +1243,7 @@ namespace Randomizer {
                 } else {
                     minXZDistance = sSecretCourseFluddless ? 400.0f : 800.0f;
                 }
-                minXZDistance *= mInfo.mExSpacialScale;
+                minXZDistance *= scaleLinearAtAnchor(mInfo.mExSpacialScale, 0.75f, 1.0f);
 
                 do {
                     const f32 theta = 2.0f * M_PI * randLerp();
@@ -1265,12 +1261,9 @@ namespace Randomizer {
                     horizontalRadius *= mInfo.mExSpacialScale;
                     verticalRadius *= mInfo.mExSpacialScale;
 
-                    const f32 adjustX =
-                        horizontalRadius * outS.x * sinf(theta) * cosf(phi);
-                    const f32 adjustY =
-                        verticalRadius * outS.y * randLerp();
-                    const f32 adjustZ =
-                        horizontalRadius * outS.z * cosf(theta);
+                    const f32 adjustX = horizontalRadius * outS.x * sinf(theta) * cosf(phi);
+                    const f32 adjustY = verticalRadius * outS.y * randLerp();
+                    const f32 adjustZ = horizontalRadius * outS.z * cosf(theta);
 
                     outT.x = prevObjPos.x + adjustX;
                     outT.y = prevObjPos.y + adjustY;
@@ -1324,6 +1317,8 @@ namespace Randomizer {
 
             sSecretCourseLastPos    = sSecretCourseCurrentPos;
             sSecretCourseCurrentPos = outT;
+
+            OSReport("obj: %s\n", mInfo.mObjectType);
 
             Mtx mtx;
             Matrix::rotateToNormal(outT - prevObjPos, mtx);

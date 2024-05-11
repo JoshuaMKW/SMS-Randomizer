@@ -54,6 +54,15 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "MapObjFlag")) {
         actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjNail")) {
+        actorInfo.mExSpacialScale = 0.8f;
+        actorInfo.mIsExLinear     = true;
+        actorInfo.mIsGroundValid  = true;
+        actorInfo.mIsWallValid    = false;
+        actorInfo.mIsRoofValid    = false;
+        actorInfo.mIsWaterValid   = false;
+        actorInfo.mShouldResizeY  = false;
+        actorInfo.mShouldRotateXZ = false;
     } else if (STR_EQUAL(objectType, "MapObjGrass")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "MapObjGrassGroup")) {

@@ -18,7 +18,7 @@ namespace Randomizer {
     public:
         virtual ~ISolver() = default;
 
-        virtual void init(TMarDirector *director)        = 0;
+        virtual void init(TMarDirector *director)                               = 0;
         virtual bool solve(JDrama::TActor *actor, TMapCollisionData &collision) = 0;
     };
 
@@ -28,12 +28,11 @@ namespace Randomizer {
 
     public:
         SMSSolver() = default;
-        SMSSolver(THitActor *actor) : ISolver(), mActor(actor) {}
 
         void init(TMarDirector *director) override;
         bool solve(JDrama::TActor *actor, TMapCollisionData &collision) override;
 
-        void setTarget(THitActor *actor);
+        void setTarget(JDrama::TActor *actor);
         virtual size_t getSampleMax() const { return 100; }
 
     protected:
