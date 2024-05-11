@@ -5,6 +5,7 @@
 
 #include <SMS/Manager/FlagManager.hxx>
 #include <SMS/Manager/PollutionManager.hxx>
+#include <SMS/Map/Map.hxx>
 #include <SMS/Map/MapCollisionStatic.hxx>
 #include <SMS/Map/PollutionLayer.hxx>
 #include <SMS/Strategic/ObjChara.hxx>
@@ -12,6 +13,7 @@
 #include <SMS/raw_fn.hxx>
 
 #include <BetterSMS/libs/constmath.hxx>
+#include <BetterSMS/libs/geometry.hxx>
 #include <BetterSMS/libs/global_unordered_map.hxx>
 #include <BetterSMS/libs/global_vector.hxx>
 #include <BetterSMS/libs/triangle.hxx>
@@ -22,7 +24,6 @@
 #include "settings.hxx"
 #include "solver.hxx"
 #include "surface.hxx"
-#include <Map/Map.hxx>
 
 static TGlobalVector<u16> sWarpIDWhiteList;
 static TGlobalUnorderedMap<u16, Randomizer::ISolver *> sSolvers;
@@ -205,65 +206,6 @@ static f32 getFromGroundHeight(const HitActorInfo &actorInfo) {
     return actorInfo.mFromSurfaceDist;
 }
 
-static void normalToRotationMatrix(Mtx out, const TVec3f &faceNormal) {
-    TVec3f forward;
-    PSVECNormalize(faceNormal, forward);
-
-    TVec3f up = fabsf(forward.y) < 0.999f ? TVec3f::up() : TVec3f::forward();
-    TVec3f right;
-
-    PSVECCrossProduct(up, forward, right);
-    PSVECNormalize(right, right);
-    PSVECCrossProduct(forward, right, up);
-
-    PSMTXIdentity(out);
-    out[0][0] = right.x;
-    out[0][1] = right.y;
-    out[0][2] = right.z;
-
-    out[1][0] = up.x;
-    out[1][1] = up.y;
-    out[1][2] = up.z;
-
-    out[2][0] = forward.x;
-    out[2][1] = forward.y;
-    out[2][2] = forward.z;
-}
-
-static void rotateWithNormal(const TVec3f &normal, TVec3f &out) {
-    Mtx mtx;
-    normalToRotationMatrix(mtx, normal);
-
-    // Row-major rotation matrix
-    // XYZ extrinsic rotation (ZYX intrinsic)
-    // X -> left + clockwise
-    // Y -> up + counter-clockwise
-    // Z -> forward + clockwise
-
-    f32 sy = mtx[0][2];
-    f32 y  = M_PI * 0.5f - acosf(sy);
-    f32 cy = cosf(y);
-
-    if (sy > 0.999f) {
-        out.x = 0;
-        out.y = -radiansToAngle(M_PI * 0.5f);
-        out.z = radiansToAngle(atan2f(-mtx[1][0], mtx[1][1]));
-    } else if (sy < -0.999f) {
-        out.x = 0;
-        out.y = -radiansToAngle(-M_PI * 0.5f);
-        out.z = radiansToAngle(atan2f(-mtx[1][0], mtx[1][1]));
-    } else {
-        f32 cx = mtx[2][2] / cy;
-        f32 sx = mtx[1][2] / -cy;
-        f32 cz = mtx[0][0] / cy;
-        f32 sz = mtx[0][1] / -cy;
-
-        out.x = radiansToAngle(atan2f(-sx, cx));
-        out.y = -radiansToAngle(y);
-        out.z = radiansToAngle(atan2f(-sz, cz));
-    }
-}
-
 static size_t collectFloorsAtXZ(const TMapCollisionData &collision, f32 x, f32 z, bool groundValid,
                                 bool waterValid, size_t capacity, const TBGCheckData **out,
                                 f32 *yOut) {
@@ -436,8 +378,11 @@ namespace Randomizer {
             outT = target;
 
             if (mInfo.mIsSurfaceBound || true) {
-                rotateWithNormal(floor->mNormal, outR);
                 PSVECNormalize(floor->mNormal, mInfo.mSurfaceNormal);
+
+                Mtx mtx;
+                Matrix::rotateToNormal(floor->mNormal, mtx);
+                outR = Vector3::eulerFromMatrix(mtx);
 
                 outR.x += mInfo.mAdjustRotation.x;
                 outR.y += mInfo.mAdjustRotation.y;
@@ -508,8 +453,12 @@ namespace Randomizer {
             outT.add(scaledNormal);
 
             if (mInfo.mIsSurfaceBound || true) {
-                rotateWithNormal(wall->mNormal, outR);
                 PSVECNormalize(wall->mNormal, mInfo.mSurfaceNormal);
+
+                Mtx mtx;
+                Matrix::rotateToNormal(wall->mNormal, mtx);
+                outR = Vector3::eulerFromMatrix(mtx);
+
                 outR.x += mInfo.mAdjustRotation.x;
                 outR.y += mInfo.mAdjustRotation.y;
                 outR.z += mInfo.mAdjustRotation.z;
@@ -573,8 +522,12 @@ namespace Randomizer {
             outT.add(scaledNormal);
 
             if (mInfo.mIsSurfaceBound || true) {
-                rotateWithNormal(roof->mNormal, outR);
                 PSVECNormalize(roof->mNormal, mInfo.mSurfaceNormal);
+
+                Mtx mtx;
+                Matrix::rotateToNormal(floor->mNormal, mtx);
+                outR = Vector3::eulerFromMatrix(mtx);
+
                 outR.x += mInfo.mAdjustRotation.x;
                 outR.y += mInfo.mAdjustRotation.y;
                 outR.z += mInfo.mAdjustRotation.z;
@@ -1335,7 +1288,9 @@ namespace Randomizer {
             sSecretCourseLastPos    = sSecretCourseCurrentPos;
             sSecretCourseCurrentPos = outT;
 
-            rotateWithNormal(outT - prevObjPos, outR);
+            Mtx mtx;
+            Matrix::rotateToNormal(outT - prevObjPos, mtx);
+            outR = Vector3::eulerFromMatrix(mtx);
         } else {
             outT.y = 0.0f;
 
@@ -1370,7 +1325,9 @@ namespace Randomizer {
             sSecretCourseLastPos    = sSecretCourseCurrentPos;
             sSecretCourseCurrentPos = outT;
 
-            rotateWithNormal(outT - prevObjPos, outR);
+            Mtx mtx;
+            Matrix::rotateToNormal(outT - prevObjPos, mtx);
+            outR = Vector3::eulerFromMatrix(mtx);
         }
 
         mActor->mTranslation = outT;
