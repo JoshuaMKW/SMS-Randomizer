@@ -25,8 +25,8 @@
 #include <Map/Map.hxx>
 
 static TGlobalVector<u16> sWarpIDWhiteList;
-static TGlobalUnorderedMap<u16, Randomizer::BaseSolver *> sSolvers;
-static Randomizer::BaseSolver *sDefaultSolver = nullptr;
+static TGlobalUnorderedMap<u16, Randomizer::ISolver *> sSolvers;
+static Randomizer::ISolver *sDefaultSolver = nullptr;
 
 const TGlobalVector<u16> &Randomizer::getWarpIDWhiteList() { return sWarpIDWhiteList; }
 
@@ -66,6 +66,7 @@ void initDefaultSolver(TApplication *app) {
 / API
 */
 namespace Randomizer {
+
     bool isWarpIDValid(u16 warpID) {
         for (auto &id : sWarpIDWhiteList) {
             if (warpID == id) {
@@ -80,14 +81,14 @@ namespace Randomizer {
         return sSolvers.find(warpID) != sSolvers.begin();
     }
 
-    BaseSolver *getSolver(u8 area, u8 episode) {
+    ISolver *getSolver(u8 area, u8 episode) {
         const u16 warpID = ((area + 1) << 8) | episode;
         if (!isSolverRegistered(area, episode))
             return sDefaultSolver;
         return sSolvers[warpID];
     }
 
-    bool registerSolver(u8 area, u8 episode, BaseSolver *solver) {
+    bool registerSolver(u8 area, u8 episode, ISolver *solver) {
         const u16 warpID = ((area + 1) << 8) | episode;
         if (isSolverRegistered(area, episode)) {
             OSReport("Tried to register a solver for a stage that already has one! (Area: %d, "
@@ -107,12 +108,13 @@ namespace Randomizer {
         return true;
     }
 
-    bool setDefaultSolver(BaseSolver *solver) {
+    bool setDefaultSolver(ISolver *solver) {
         if (!solver)
             return false;
         sDefaultSolver = solver;
         return true;
     }
+
 }  // namespace Randomizer
 
 extern void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &actorInfo);
@@ -134,7 +136,7 @@ static bool sSecretCourseVertical         = false;
 static bool sSecretCourseFluddless        = false;
 static bool sSecretCourseHasEndPlatform   = false;
 
-static THitActor *sGelatoWarp = nullptr;
+static JDrama::TActor *sGelatoWarp = nullptr;
 
 static void getSecretCourseStart(const TMarDirector &director, TVec3f &out) {
     switch (director.mAreaID) {
@@ -173,7 +175,8 @@ static void getSecretCourseStart(const TMarDirector &director, TVec3f &out) {
 extern void resetStageWarpInfo();
 
 void initMapLoadStatus(TMarDirector *director) {
-    Randomizer::BaseSolver *solver = Randomizer::getSolver(director->mAreaID, director->mEpisodeID);
+    Randomizer::ISolver *solver =
+        Randomizer::getSolver(director->mAreaID, director->mEpisodeID);
     solver->init(director);
 }
 
@@ -396,31 +399,9 @@ void Randomizer::getRandomizedScale(TVec3f &out, const HitActorInfo &actorInfo) 
 }
 
 namespace Randomizer {
-    BaseSolver::BaseSolver(THitActor *actor) : mActor(actor) {
-        mInfo            = getRandomizerInfo(actor);
-        mInfo.mObjectKey = mActor->mKeyName;
-        initializeDefaultActorInfo(*gpMarDirector, mInfo);
-    }
 
-    void BaseSolver::setTarget(THitActor *actor) {
-        mActor           = actor;
-        mInfo            = getRandomizerInfo(actor);
-        mInfo.mObjectKey = mActor->mKeyName;
-        initializeDefaultActorInfo(*gpMarDirector, mInfo);
-    }
-
-    bool BaseSolver::isContextValid() const {
-        if (!mInfo.mShouldRandomize)
-            return false;
-
-        if (STR_EQUAL(mActor->mKeyName, "randomizer_off"))
-            return false;
-
-        return true;
-    }
-
-    void BaseSolver::sampleRandomFloor(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
-                                       TVec3f &outS) {
+    void SMSSolver::sampleRandomFloor(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
+                                         TVec3f &outS) {
         const bool isUnderwaterValid = mInfo.mIsUnderwaterValid;
         const bool isWaterValid      = mInfo.mIsWaterValid;
         const bool isGroundValid     = mInfo.mIsGroundValid;
@@ -472,8 +453,8 @@ namespace Randomizer {
         }
     }
 
-    void BaseSolver::sampleRandomWall(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
-                                      TVec3f &outS) {
+    void SMSSolver::sampleRandomWall(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
+                                        TVec3f &outS) {
         constexpr f32 gridFraction = 1.0f / 1024.0f;
 
         const TBGCheckData *staticWalls[256];
@@ -543,8 +524,8 @@ namespace Randomizer {
         }
     }
 
-    void BaseSolver::sampleRandomRoof(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
-                                      TVec3f &outS) {
+    void SMSSolver::sampleRandomRoof(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
+                                        TVec3f &outS) {
         constexpr f32 gridFraction = 1.0f / 1024.0f;
 
         const TBGCheckData *staticRoofs[256];
@@ -608,8 +589,8 @@ namespace Randomizer {
         }
     }
 
-    void BaseSolver::sampleRandomSky(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
-                                     TVec3f &outS) {
+    void SMSSolver::sampleRandomSky(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
+                                       TVec3f &outS) {
         TVec3f target = TVec3f::zero();
         for (size_t i = 0; i < getSampleMax(); ++i) {
             const f32 fromGroundHeight = getFromGroundHeight(mInfo);
@@ -641,7 +622,10 @@ namespace Randomizer {
     }
 
     bool SMSSolver::isContextValid() const {
-        if (!BaseSolver::isContextValid())
+        if (!mInfo.mShouldRandomize)
+            return false;
+
+        if (!isCurrentActorValid())
             return false;
 
         if (SMS_isExMap__Fv()) {
@@ -744,7 +728,9 @@ namespace Randomizer {
         resetHitHideObjs();
     }
 
-    bool SMSSolver::solve(TMapCollisionData &collision) {
+    bool SMSSolver::solve(JDrama::TActor *actor, TMapCollisionData &collision) {
+        mActor = actor;
+
         if (gpMarDirector->mAreaID == 4) {  // Collect Castle Warp
             if (STR_EQUAL(mInfo.mObjectKey, "\x83\x58\x83\x65\x81\x5B\x83\x57\x90\xD8\x91\xD6"
                                             "\x81\x69\x8D\xBB\x82\xCC\x8F\xE9\x81\x6A")) {
@@ -805,6 +791,13 @@ namespace Randomizer {
         getRandomizerInfo(mActor) = mInfo;
 
         return true;
+    }
+
+    void SMSSolver::setTarget(THitActor *actor) {
+        mActor           = actor;
+        mInfo            = getRandomizerInfo(actor);
+        mInfo.mObjectKey = mActor->mKeyName;
+        initializeDefaultActorInfo(*gpMarDirector, mInfo);
     }
 
     void SMSSolver::adjustSampledFloor(TVec3f &sampledPos, const TBGCheckData &floor) {
@@ -1166,6 +1159,10 @@ namespace Randomizer {
         }
     }
 
+    bool SMSSolver::isCurrentActorValid() const {
+        return STR_EQUAL(mActor->mKeyName, "randomizer_off");
+    }
+
     void SMSSolver::solveStageObject(TMapCollisionData &collision) {
         PlaneSelection selection = PlaneSelection::SKY;
 
@@ -1293,10 +1290,12 @@ namespace Randomizer {
                 float xzDistance = 0;
                 float minXZDistance;
                 if (sSecretCourseVertical) {
-                    minXZDistance = sSecretCourseFluddless ? 1000.0f : 1400.0f;
+                    minXZDistance = sSecretCourseFluddless ? 300.0f : 600.0f;
                 } else {
-                    minXZDistance = sSecretCourseFluddless ? 1400.0f : 1800.0f;
+                    minXZDistance = sSecretCourseFluddless ? 400.0f : 800.0f;
                 }
+                minXZDistance *= mInfo.mExSpacialScale;
+
                 do {
                     const f32 theta = 2.0f * M_PI * randLerp();
                     const f32 phi   = acosf(2.0f * randLerp() - 1.0f);
@@ -1310,13 +1309,15 @@ namespace Randomizer {
                         horizontalRadius = sSecretCourseVertical ? 1100.0f : 1400.0f;
                         verticalRadius   = sSecretCourseVertical ? 800.0f : 500.0f;
                     }
+                    horizontalRadius *= mInfo.mExSpacialScale;
+                    verticalRadius *= mInfo.mExSpacialScale;
 
                     const f32 adjustX =
-                        horizontalRadius * outS.x * sinf(theta) * cosf(phi) * mInfo.mExSpacialScale;
+                        horizontalRadius * outS.x * sinf(theta) * cosf(phi);
                     const f32 adjustY =
-                        verticalRadius * outS.y * randLerp() * mInfo.mExSpacialScale;
+                        verticalRadius * outS.y * randLerp();
                     const f32 adjustZ =
-                        horizontalRadius * outS.z * cosf(theta) * mInfo.mExSpacialScale;
+                        horizontalRadius * outS.z * cosf(theta);
 
                     outT.x = prevObjPos.x + adjustX;
                     outT.y = prevObjPos.y + adjustY;

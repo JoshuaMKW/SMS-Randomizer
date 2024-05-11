@@ -36,4 +36,4 @@ struct HitActorInfo {
     TVec3f mSurfaceNormal;
 };
 
-HitActorInfo &getRandomizerInfo(THitActor *actor);
+HitActorInfo &getRandomizerInfo(JDrama::TActor *actor);

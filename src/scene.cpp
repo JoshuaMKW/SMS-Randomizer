@@ -37,13 +37,10 @@ static void randomizeObject() {
     if (!sIsMapLoaded || !gpMapCollisionData)
         return;
 
-    Randomizer::BaseSolver *solver = Randomizer::getSolver(gpMarDirector->mAreaID, gpMarDirector->mEpisodeID);
-    solver->setTarget(actor);
+    Randomizer::ISolver *solver = Randomizer::getSolver(gpMarDirector->mAreaID, gpMarDirector->mEpisodeID);
 
-    if (!solver->solve(*gpMapCollisionData)) {
-        auto &info = solver->getInfo();
-        OSReport("[Randomizer] Could not solve object \"%s (%s)\"!\n", info.mObjectType,
-                 info.mObjectKey);
+    if (!solver->solve(actor, *gpMapCollisionData)) {
+        OSReport("[Randomizer] Could not solve object \"%s\"!\n", actor->mKeyName);
     }
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x802F6EE0, 0, 0, 0), randomizeObject);

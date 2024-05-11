@@ -3,9 +3,9 @@
 
 #include "actorinfo.hxx"
 
-BetterSMS::TGlobalUnorderedMap<THitActor *, HitActorInfo> sHitActorMap;
+BetterSMS::TGlobalUnorderedMap<JDrama::TActor *, HitActorInfo> sHitActorMap;
 
-HitActorInfo &getRandomizerInfo(THitActor *actor) {
+HitActorInfo &getRandomizerInfo(JDrama::TActor *actor) {
     auto status = sHitActorMap.emplace(actor, HitActorInfo());
     HitActorInfo &info = status.first->second;
 

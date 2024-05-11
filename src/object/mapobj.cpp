@@ -328,7 +328,7 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
     } else if (STR_EQUAL(objectType, "MuddyBoat")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "Umaibou")) {
-        actorInfo.mExSpacialScale = 5.0f;
+        actorInfo.mExSpacialScale = 4.0f;
         actorInfo.mIsExLinear = true;
     } else if (STR_EQUAL(objectType, "RedCoinSwitch")) {
         actorInfo.mIsSurfaceBound  = true;
