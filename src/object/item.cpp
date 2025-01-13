@@ -19,7 +19,7 @@ static void *collectItem(void *vtable) {
 
     *(void **)actor = vtable;
 
-    HitActorInfo &actorInfo = getRandomizerInfo(actor);
+    HitActorInfo &actorInfo        = getRandomizerInfo(actor);
     actorInfo.mFromSurfaceDist     = 0;
     actorInfo.mShouldRandomize     = Randomizer::isRandomCollectibles();
     actorInfo.mIsItemObj           = true;
@@ -41,7 +41,7 @@ static void *collectCoin(void *vtable) {
 
     *(void **)actor = vtable;
 
-    HitActorInfo &actorInfo         = getRandomizerInfo(actor);
+    HitActorInfo &actorInfo        = getRandomizerInfo(actor);
     actorInfo.mFromSurfaceDist     = 0;
     actorInfo.mShouldRandomize     = Randomizer::isRandomCollectibles();
     actorInfo.mIsItemObj           = true;
@@ -64,7 +64,7 @@ static void *collectCoinBlue(void *vtable) {
 
     *(void **)actor = vtable;
 
-    HitActorInfo &actorInfo         = getRandomizerInfo(actor);
+    HitActorInfo &actorInfo        = getRandomizerInfo(actor);
     actorInfo.mFromSurfaceDist     = 0;
     actorInfo.mShouldRandomize     = Randomizer::isRandomCollectibles();
     actorInfo.mIsItemObj           = true;
@@ -87,7 +87,7 @@ static void *collectCoinRed(void *vtable) {
 
     *(void **)actor = vtable;
 
-    HitActorInfo &actorInfo         = getRandomizerInfo(actor);
+    HitActorInfo &actorInfo        = getRandomizerInfo(actor);
     actorInfo.mFromSurfaceDist     = 0;
     actorInfo.mShouldRandomize     = Randomizer::isRandomCollectibles();
     actorInfo.mIsItemObj           = true;
@@ -107,7 +107,7 @@ SMS_PATCH_BL(SMS_PORT_REGION(0x801BE3B8, 0, 0, 0), collectCoinRed);
 static TMapObjBase *collect1up(TMapObjBase *actor, const char *name) {
     __ct__11TMapObjBaseFPCc(actor, name);
 
-    HitActorInfo &actorInfo         = getRandomizerInfo(actor);
+    HitActorInfo &actorInfo        = getRandomizerInfo(actor);
     actorInfo.mFromSurfaceDist     = 0;
     actorInfo.mShouldRandomize     = Randomizer::isRandomCollectibles();
     actorInfo.mIsItemObj           = true;
@@ -130,7 +130,7 @@ static void *collectShine(void *vtable) {
 
     *(void **)actor = vtable;
 
-    HitActorInfo &actorInfo         = getRandomizerInfo(actor);
+    HitActorInfo &actorInfo        = getRandomizerInfo(actor);
     actorInfo.mFromSurfaceDist     = 300;
     actorInfo.mShouldRandomize     = Randomizer::isRandomCollectibles();
     actorInfo.mIsItemObj           = true;
@@ -138,6 +138,7 @@ static void *collectShine(void *vtable) {
     actorInfo.mIsUnderwaterValid   = false;
     actorInfo.mIsWaterValid        = false;
     actorInfo.mIsGroundValid       = true;
+    actorInfo.mIsSurfaceBound      = false;
     actorInfo.mShouldResizeUniform = true;
     actorInfo.mShouldResizeY       = true;
     actorInfo.mShouldResizeXZ      = true;
@@ -149,8 +150,7 @@ static void *collectShine(void *vtable) {
 SMS_PATCH_BL(SMS_PORT_REGION(0x801BCB74, 0, 0, 0), collectShine);
 
 static const char *makeCoinsVisible(TMapObjBase *actor) {
-    if (Randomizer::isRandomCollectibles() &&
-        strcmp(actor->mRegisterName, "invisible_coin") == 0) {
+    if (Randomizer::isRandomCollectibles() && strcmp(actor->mRegisterName, "invisible_coin") == 0) {
         actor->mRegisterName = "coin";
     }
     return actor->mRegisterName;

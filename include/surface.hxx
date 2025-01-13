@@ -7,18 +7,20 @@
 #include <BetterSMS/module.hxx>
 
 namespace Surface {
-    bool isDeathRelated(const TBGCheckData& data) {
+
+    inline bool isDeathRelated(const TBGCheckData &data) {
         auto type = data.mType & 0xFFF;
         return type == 1536 || type == 2048;
     }
 
-    bool isExitRelated(const TBGCheckData &data) {
+    inline bool isExitRelated(const TBGCheckData &data) {
         auto type = data.mType & 0xFFF;
         return type == 768 || type == 1536 || type == 2048;
     }
 
-    bool isWaterRelated(const TBGCheckData &data) {
+    inline bool isWaterRelated(const TBGCheckData &data) {
         auto type = data.mType & 0xFFF;
         return data.isWaterSurface() || type == 267 || type == 33035;
     }
+
 }  // namespace Surface

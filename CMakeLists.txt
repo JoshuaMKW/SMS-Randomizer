@@ -10,6 +10,8 @@ file(GLOB BETTER_MOVESET_SRC
     "src/*.cpp"
     "src/object/*.c"
     "src/object/*.cpp"
+    "src/solver/*.c"
+    "src/solver/*.cpp"
     "include/*.h"
     "include/*.hxx"
 )

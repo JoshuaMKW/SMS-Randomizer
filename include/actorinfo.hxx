@@ -32,6 +32,8 @@ struct HitActorInfo {
     const char *mObjectKey;
     s16 mFromSurfaceDist   = 0;
     f32 mExSpacialScale    = 1.0f;
+    f32 mScaleWeightXZ     = 1.0f;
+    f32 mScaleWeightY      = 1.0f;
     TVec3s mAdjustRotation;
     TVec3f mSurfaceNormal;
 };

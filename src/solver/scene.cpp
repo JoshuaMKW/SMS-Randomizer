@@ -1,35 +1,4 @@
-#include <Dolphin/DVD.h>
-
-#include <JSystem/JGadget/List.hxx>
-#include <JSystem/JGadget/UnorderedMap.hxx>
-
-#include <SMS/Manager/FlagManager.hxx>
-#include <SMS/Manager/PollutionManager.hxx>
-#include <SMS/Map/Map.hxx>
-#include <SMS/Map/MapCollisionStatic.hxx>
-#include <SMS/Map/PollutionLayer.hxx>
-#include <SMS/Strategic/ObjChara.hxx>
-#include <SMS/Strategic/Strategy.hxx>
-#include <SMS/raw_fn.hxx>
-
-#include <BetterSMS/libs/constmath.hxx>
-#include <BetterSMS/libs/geometry.hxx>
-#include <BetterSMS/libs/global_unordered_map.hxx>
-#include <BetterSMS/libs/global_vector.hxx>
-#include <BetterSMS/libs/triangle.hxx>
-#include <BetterSMS/module.hxx>
-
-#include "actorinfo.hxx"
-#include "seed.hxx"
-#include "settings.hxx"
-#include "solver.hxx"
-#include "surface.hxx"
-
-static TGlobalVector<u16> sWarpIDWhiteList;
-static TGlobalUnorderedMap<u16, Randomizer::ISolver *> sSolvers;
-static Randomizer::ISolver *sDefaultSolver = nullptr;
-
-const TGlobalVector<u16> &Randomizer::getWarpIDWhiteList() { return sWarpIDWhiteList; }
+#include "p_common.hxx"
 
 static void initWarpList(TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName>> *stageList) {
     gpApplication.mStageArchiveAry = stageList;
@@ -58,84 +27,6 @@ static void initWarpList(TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName>> *st
     }
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x802A6BE8, 0, 0, 0), initWarpList);
-
-void initDefaultSolver(TApplication *app) {
-    sDefaultSolver = new (JKRHeap::sRootHeap, 4) Randomizer::SMSSolver();
-}
-
-/*
-/ API
-*/
-namespace Randomizer {
-
-    bool isWarpIDValid(u16 warpID) {
-        for (auto &id : sWarpIDWhiteList) {
-            if (warpID == id) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool isSolverRegistered(u8 area, u8 episode) {
-        const u16 warpID = ((area + 1) << 8) | episode;
-        return sSolvers.find(warpID) != sSolvers.begin();
-    }
-
-    ISolver *getSolver(u8 area, u8 episode) {
-        const u16 warpID = ((area + 1) << 8) | episode;
-        if (!isSolverRegistered(area, episode))
-            return sDefaultSolver;
-        return sSolvers[warpID];
-    }
-
-    bool registerSolver(u8 area, u8 episode, ISolver *solver) {
-        const u16 warpID = ((area + 1) << 8) | episode;
-        if (isSolverRegistered(area, episode)) {
-            OSReport("Tried to register a solver for a stage that already has one! (Area: %d, "
-                     "Episode: %d)\n",
-                     area, episode);
-            return false;
-        }
-        sSolvers[warpID] = solver;
-        return true;
-    }
-
-    bool deregisterSolver(u8 area, u8 episode) {
-        const u16 warpID = ((area + 1) << 8) | episode;
-        if (!isSolverRegistered(area, episode))
-            return false;
-        sSolvers.erase(warpID);
-        return true;
-    }
-
-    bool setDefaultSolver(ISolver *solver) {
-        if (!solver)
-            return false;
-        sDefaultSolver = solver;
-        return true;
-    }
-
-}  // namespace Randomizer
-
-extern void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &actorInfo);
-extern void resetHitHideObjs();
-extern void addHitHideObj(TMapObjBase *actor);
-
-bool sIsMapLoaded;
-u32 sStageSeed;
-
-static TVec3f sSecretCourseStart          = TVec3f::zero();
-static TVec3f sSecretCourseStartPlatform  = TVec3f::zero();
-static TVec3f sSecretCourseCurrentPos     = TVec3f::zero();
-static TVec3f sSecretCourseLastPos        = TVec3f::zero();
-static TVec3f sSecretCourseCurrentDir     = TVec3f::zero();
-static TVec3f sSecretCourseShinePos       = TVec3f::zero();
-static size_t sSecretCourseObjectsLoaded  = 0;
-static size_t sSecretCourseSwitchesLoaded = 0;
-static bool sSecretCourseVertical         = false;
-static bool sSecretCourseFluddless        = false;
-static bool sSecretCourseHasEndPlatform   = false;
 
 static JDrama::TActor *sGelatoWarp = nullptr;
 
@@ -275,70 +166,6 @@ bool isContextMakeSecretCourse(const TMarDirector &director) {
     return true;
 }
 
-void Randomizer::getRandomizedPointOnTriangle(TVec3f &out, const TVectorTriangle &triangle) {
-    const f32 lerpA = sqrt(randLerp());
-    const f32 lerpB = randLerp();
-
-    TVec3f compA = triangle.a;
-    TVec3f compB = triangle.b;
-    TVec3f compC = triangle.c;
-
-    compA.scale(1 - lerpA);
-    compB.scale(lerpA * (1 - lerpB));
-    compC.scale(lerpA * lerpB);
-
-    out.set(compA + compB + compC);
-}
-
-void Randomizer::getRandomizedPosition(TVec3f &out, const TMapCollisionData &collision) {
-    // Selects a random position within the collision grid (as a circle area)
-    const f32 boundsX = collision.mAreaSizeX - (1024.0f * 2);
-    const f32 boundsZ = collision.mAreaSizeZ - (1024.0f * 2);
-
-    f32 rX     = boundsX * sqrtf(randLerp());
-    f32 thetaX = sqrtf(randLerp()) * 2 * M_PI;
-
-    f32 rZ     = boundsZ * sqrtf(randLerp());
-    f32 thetaZ = sqrtf(randLerp()) * 2 * M_PI;
-
-    out.x = rX * cosf(thetaX);
-    out.y = 100000.0f;
-    out.z = rZ * sinf(thetaZ);
-}
-
-void Randomizer::getRandomizedRotation(TVec3f &out, const HitActorInfo &actorInfo) {
-    if (actorInfo.mShouldRotateXZ) {
-        out.x = lerp<f32>(0.0f, 360.0f, randLerp()) + actorInfo.mAdjustRotation.x;
-        out.z = lerp<f32>(0.0f, 360.0f, randLerp()) + actorInfo.mAdjustRotation.z;
-    }
-
-    if (actorInfo.mShouldRotateY) {
-        out.y = lerp<f32>(0.0f, 360.0f, randLerp()) + actorInfo.mAdjustRotation.y;
-    }
-}
-
-void Randomizer::getRandomizedScale(TVec3f &out, const HitActorInfo &actorInfo) {
-    if (actorInfo.mShouldResizeUniform) {
-        const f32 scaleLerp = randLerp();
-
-        if (actorInfo.mShouldResizeXZ) {
-            out.x = lerp<f32>(0.4f, 2.5f, scaleLerp);
-            out.z = lerp<f32>(0.4f, 2.5f, scaleLerp);
-        }
-
-        if (actorInfo.mShouldResizeY)
-            out.y = lerp<f32>(0.4f, 2.5f, scaleLerp);
-    } else {
-        if (actorInfo.mShouldResizeXZ) {
-            out.x = lerp<f32>(0.4f, 2.5f, randLerp());
-            out.z = lerp<f32>(0.4f, 2.5f, randLerp());
-        }
-
-        if (actorInfo.mShouldResizeY)
-            out.y = lerp<f32>(0.4f, 2.5f, randLerp());
-    }
-}
-
 namespace Randomizer {
 
     void SMSSolver::sampleRandomFloor(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
@@ -363,8 +190,7 @@ namespace Randomizer {
             if (floorsFound == 0)
                 continue;
 
-            const int decidedFloor =
-                floorsFound > 1 ? lerp<f32>(0.0f, floorsFound - 0.01f, randLerp()) : 0;
+            const int decidedFloor    = floorsFound > 1 ? lerp<int>(0, floorsFound, randLerp()) : 0;
             const TBGCheckData *floor = floors[decidedFloor];
             target.y                  = groundY[decidedFloor];
 
@@ -375,12 +201,17 @@ namespace Randomizer {
 
             outT = target;
 
-            if (mInfo.mIsSurfaceBound || true) {
+            if (mInfo.mIsSurfaceBound) {
                 PSVECNormalize(floor->mNormal, mInfo.mSurfaceNormal);
 
+                TVec3f up = fabsf(mInfo.mSurfaceNormal.y) < 0.999f ? TVec3f::up()
+                                                                   : TVec3f::forward();
+
                 Mtx mtx;
-                Matrix::rotateToNormal(floor->mNormal, mtx);
-                outR = Vector3::eulerFromMatrix(mtx);
+                Matrix::normalToRotation(floor->mNormal, up, mtx);
+
+                TVec3f t, s;
+                Matrix::decompose(mtx, t, outR, s);
 
                 outR.x += mInfo.mAdjustRotation.x;
                 outR.y += mInfo.mAdjustRotation.y;
@@ -450,12 +281,17 @@ namespace Randomizer {
             scaledNormal.scale(mInfo.mFromSurfaceDist + 1.0f);
             outT.add(scaledNormal);
 
-            if (mInfo.mIsSurfaceBound || true) {
+            if (mInfo.mIsSurfaceBound) {
                 PSVECNormalize(wall->mNormal, mInfo.mSurfaceNormal);
 
+                TVec3f up = fabsf(mInfo.mSurfaceNormal.y) < 0.999f ? TVec3f::up()
+                                                                   : TVec3f::forward();
+
                 Mtx mtx;
-                Matrix::rotateToNormal(wall->mNormal, mtx);
-                outR = Vector3::eulerFromMatrix(mtx);
+                Matrix::normalToRotation(floor->mNormal, up, mtx);
+
+                TVec3f t, s;
+                Matrix::decompose(mtx, t, outR, s);
 
                 outR.x += mInfo.mAdjustRotation.x;
                 outR.y += mInfo.mAdjustRotation.y;
@@ -519,12 +355,17 @@ namespace Randomizer {
             scaledNormal.scale(mInfo.mFromSurfaceDist + 1.0f);
             outT.add(scaledNormal);
 
-            if (mInfo.mIsSurfaceBound || true) {
+            if (mInfo.mIsSurfaceBound) {
                 PSVECNormalize(roof->mNormal, mInfo.mSurfaceNormal);
 
+                TVec3f up = fabsf(mInfo.mSurfaceNormal.y) < 0.999f ? TVec3f::up()
+                                                                   : TVec3f::forward();
+
                 Mtx mtx;
-                Matrix::rotateToNormal(floor->mNormal, mtx);
-                outR = Vector3::eulerFromMatrix(mtx);
+                Matrix::normalToRotation(floor->mNormal, up, mtx);
+
+                TVec3f t, s;
+                Matrix::decompose(mtx, t, outR, s);
 
                 outR.x += mInfo.mAdjustRotation.x;
                 outR.y += mInfo.mAdjustRotation.y;
@@ -629,6 +470,10 @@ namespace Randomizer {
             if (gpMarDirector->mEpisodeID == 0)
                 return false;
             return true;
+        case 56:
+            if (gpMarDirector->mEpisodeID == 0)
+                return false;
+            return true;
         case 60:
             if (gpMarDirector->mEpisodeID == 0)
                 return false;
@@ -727,7 +572,7 @@ namespace Randomizer {
             (STR_EQUAL(mActor->mKeyName, "WoodBlockLarge 0") && gpMarDirector->mAreaID == 32)) {
             sSecretCourseHasEndPlatform = true;
             sSecretCourseShinePos       = mActor->mTranslation;
-            sSecretCourseShinePos.y +=  200.0f * scaleLinearAtAnchor(mActor->mScale.y, 1.5f, 1.0f);
+            sSecretCourseShinePos.y += 200.0f * scaleLinearAtAnchor(mActor->mScale.y, 1.5f, 1.0f);
         }
 
         if (gpMarDirector->mAreaID == 4) {
@@ -740,6 +585,37 @@ namespace Randomizer {
         Randomizer::srand32(gameSeed);
 
         getRandomizerInfo(mActor) = mInfo;
+
+        return true;
+    }
+
+#define FLT_MAX 3.402823466e+38F
+
+    bool SMSSolver::solve(TGraphWeb *web, TMapCollisionData &collision) {
+        BoundingBox web_bb;
+
+        TVec3f min = {FLT_MAX, FLT_MAX, FLT_MAX};
+        TVec3f max = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
+
+        for (size_t i = 0; i < web->mNodeCount; ++i) {
+            TVec3f pos = web->indexToPoint(i);
+            min.x      = Min(min.x, pos.x);
+            min.y      = Min(min.y, pos.y);
+            min.z      = Min(min.z, pos.z);
+            max.x      = Max(max.x, pos.x);
+            max.y      = Max(max.y, pos.y);
+            max.z      = Max(max.z, pos.z);
+        }
+
+        web_bb.center = {(min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f, (min.z + max.z) / 2.0f};
+
+        web_bb.size = {(max.x - min.x) / 2.0f, (max.y - min.y) / 2.0f, (max.z - min.z) / 2.0f};
+
+        web_bb.rotation = {0.0f, 0.0f, 0.0f};
+
+        // TODO: Implement web solver to understand randomized map state
+        // probably have this run at the end of the stage generation
+        solveGraphWeb(collision, web, web_bb);
 
         return true;
     }
@@ -1149,186 +1025,9 @@ namespace Randomizer {
         }
     }
 
-    void SMSSolver::solveExStageObject(TMapCollisionData &collision) {
-        TVec3f outT;
-        TVec3f outR;
-        TVec3f outS;
-
-        if (Randomizer::isRandomScale()) {
-            getRandomizedScale(outS, mInfo);
-        } else {
-            outS = mActor->mScale;
-        }
-
-        if (mInfo.mIsShineObj) {
-            if (sSecretCourseHasEndPlatform) {
-                f32 sampleY = sSecretCourseShinePos.y;
-                f32 roofY;
-                while (true) {
-                    const TBGCheckData *roof;
-                    roofY = collision.checkRoof(sSecretCourseShinePos.x, sampleY,
-                                                sSecretCourseShinePos.z, 0, &roof);
-                    const TBGCheckData *sample;
-                    sampleY = collision.checkGround(sSecretCourseShinePos.x, roofY,
-                                                    sSecretCourseShinePos.z, 0, &sample);
-
-                    if (sample == &TMapCollisionData::mIllegalCheckData ||
-                        (sample->mType == 1536 || sample->mType == 2048)) {
-                        sampleY = sSecretCourseCurrentPos.y + 200.0f;
-                        break;
-                    }
-
-                    if (roofY - sampleY > 300.0f || roof->isWaterSurface()) {
-                        sampleY = sSecretCourseShinePos.y;
-                        break;
-                    }
-
-                    sampleY = roofY + 10.0f;
-                }
-
-                outT.x = sSecretCourseShinePos.x;
-                outT.y = sampleY;
-                outT.z = sSecretCourseShinePos.z;
-            } else {
-                outT = sSecretCourseCurrentPos;
-                outT.y += 200.0f;
-            }
-
-            getRandomizedRotation(outR, mInfo);
-
-            mActor->mTranslation = outT;
-            mActor->mRotation    = outR;
-            mActor->mScale       = outS;
-            return;
-        }
-
-        if (mInfo.mIsSwitchObj) {
-            switch (sSecretCourseSwitchesLoaded) {
-            default:
-            case 0:
-                outT = sSecretCourseStartPlatform;
-                outT.x += 500.0f;
-                break;
-            case 1:
-                outT = sSecretCourseStartPlatform;
-                outT.x -= 500.0f;
-                break;
-            case 2:
-                outT = sSecretCourseStartPlatform;
-                outT.z += 500.0f;
-                break;
-            case 3:
-                outT = sSecretCourseStartPlatform;
-                outT.z -= 500.0f;
-                break;
-            }
-
-            mActor->mTranslation = outT;
-            mActor->mRotation    = outR;
-            mActor->mScale       = outS;
-            return;
-        }
-
-        TVec3f pprevObjPos = sSecretCourseLastPos;
-        TVec3f prevObjPos  = sSecretCourseCurrentPos;
-
-        if (mInfo.mIsExLinear) {
-            Mtx rot;
-
-            do {
-                float xzDistance = 0;
-                float minXZDistance;
-                if (sSecretCourseVertical) {
-                    minXZDistance = sSecretCourseFluddless ? 300.0f : 600.0f;
-                } else {
-                    minXZDistance = sSecretCourseFluddless ? 400.0f : 800.0f;
-                }
-                minXZDistance *= scaleLinearAtAnchor(mInfo.mExSpacialScale, 0.75f, 1.0f);
-
-                do {
-                    const f32 theta = 2.0f * M_PI * randLerp();
-                    const f32 phi   = acosf(2.0f * randLerp() - 1.0f);
-
-                    f32 horizontalRadius;
-                    f32 verticalRadius;
-                    if (sSecretCourseFluddless) {
-                        horizontalRadius = sSecretCourseVertical ? 600.0f : 800.0f;
-                        verticalRadius   = sSecretCourseVertical ? 400.0f : 200.0f;
-                    } else {
-                        horizontalRadius = sSecretCourseVertical ? 1100.0f : 1400.0f;
-                        verticalRadius   = sSecretCourseVertical ? 800.0f : 500.0f;
-                    }
-                    horizontalRadius *= mInfo.mExSpacialScale;
-                    verticalRadius *= mInfo.mExSpacialScale;
-
-                    const f32 adjustX = horizontalRadius * outS.x * sinf(theta) * cosf(phi);
-                    const f32 adjustY = verticalRadius * outS.y * randLerp();
-                    const f32 adjustZ = horizontalRadius * outS.z * cosf(theta);
-
-                    outT.x = prevObjPos.x + adjustX;
-                    outT.y = prevObjPos.y + adjustY;
-                    outT.z = prevObjPos.z + adjustZ;
-
-                    xzDistance = sqrtf(adjustX * adjustX + adjustZ * adjustZ);
-                } while (xzDistance < minXZDistance);
-
-                if (outT.y < 500.0f) {
-                    outT.y = 500.0f + (500.0f - outT.y);
-                }
-
-            } while (PSVECDistance(prevObjPos, outT) > PSVECDistance(pprevObjPos, outT) + 500.0f);
-
-            sSecretCourseLastPos    = sSecretCourseCurrentPos;
-            sSecretCourseCurrentPos = outT;
-
-            Mtx mtx;
-            Matrix::rotateToNormal(outT - prevObjPos, mtx);
-            outR = Vector3::eulerFromMatrix(mtx);
-        } else {
-            outT.y = 0.0f;
-
-            const f32 theta = 2.0f * M_PI * randLerp();
-            const f32 phi   = acosf(2.0f * randLerp() - 1.0f);
-
-            f32 horizontalRadius;
-            f32 verticalRadius;
-            if (sSecretCourseFluddless) {
-                horizontalRadius = sSecretCourseVertical ? 600.0f : 800.0f;
-                verticalRadius   = sSecretCourseVertical ? 400.0f : 200.0f;
-            } else {
-                horizontalRadius = sSecretCourseVertical ? 1100.0f : 1400.0f;
-                verticalRadius   = sSecretCourseVertical ? 800.0f : 500.0f;
-            }
-
-            const f32 adjustX =
-                horizontalRadius * outS.x * sinf(theta) * cosf(phi) * mInfo.mExSpacialScale;
-            const f32 adjustY =
-                verticalRadius * outS.y * sinf(theta) * sinf(phi) * mInfo.mExSpacialScale +
-                (sSecretCourseVertical ? 50.0f : 0.0f);
-            const f32 adjustZ = horizontalRadius * outS.z * cosf(theta) * mInfo.mExSpacialScale;
-
-            outT.x = sSecretCourseCurrentPos.x + adjustX;
-            outT.y = sSecretCourseCurrentPos.y + adjustY;
-            outT.z = sSecretCourseCurrentPos.z + adjustZ;
-
-            if (outT.y < 500.0f) {
-                outT.y = 500.0f + (500.0f - outT.y);
-            }
-
-            sSecretCourseLastPos    = sSecretCourseCurrentPos;
-            sSecretCourseCurrentPos = outT;
-
-            OSReport("obj: %s\n", mInfo.mObjectType);
-
-            Mtx mtx;
-            Matrix::rotateToNormal(outT - prevObjPos, mtx);
-            outR = Vector3::eulerFromMatrix(mtx);
-        }
-
-        mActor->mTranslation = outT;
-        mActor->mRotation    = outR;
-        mActor->mScale       = outS;
+    void SMSSolver::solveGraphWeb(TMapCollisionData &collision, TGraphWeb *web,
+                                  const BoundingBox &bb) {
+        collision.initMoveCollision();
     }
-}  // namespace Randomizer
 
-#undef STR_EQUAL
+}  // namespace Randomizer

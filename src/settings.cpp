@@ -7,7 +7,7 @@ bool RandomMirrorModeSetting::sStateValue = true;
 Settings::SettingsGroup gSettingsGroup(1, 0, Settings::Priority::MODE);
 
 static int sGameSeedValue;
-PrintUIntSetting gGameSeedSetting("Game Seed", &sGameSeedValue);
+Settings::IntSetting gGameSeedSetting("Game Seed", &sGameSeedValue);
 
 static bool sRandomizeCollectiblesFlag;
 Settings::SwitchSetting gRandomizeCollectiblesSetting("Randomize Collectibles",
@@ -43,6 +43,7 @@ Settings::SwitchSetting gRandomizeHPDamageSetting("Randomize HP/Damage",
 RandomMirrorModeSetting gRandomizeMirrorModeSetting("Randomize Mirror Mode");
 
 void initSettings(Settings::SettingsGroup& group) {
+    gGameSeedSetting.setValueRange({0, 999999999, 1});
     group.addSetting(&gGameSeedSetting);
     group.addSetting(&gRandomizeCollectiblesSetting);
     group.addSetting(&gRandomizeObjectsSetting);

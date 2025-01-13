@@ -1,15 +1,15 @@
 #include <Dolphin/types.h>
 
-#include <SMS/rand.h>
 #include <SMS/System/Application.hxx>
+#include <SMS/rand.h>
 
-#include "settings.hxx"
 #include "p_settings.hxx"
+#include "settings.hxx"
 
-static u32 sSeed = 0;
+static u32 sSeed      = 0;
 static u32 sColorSeed = 0;
 
-extern PrintUIntSetting gGameSeedSetting;
+extern Settings::IntSetting gGameSeedSetting;
 
 namespace Randomizer {
     void srand32(u32 seed) { sSeed = seed; }
@@ -36,10 +36,19 @@ void gameSeedChanged(void *old, void *cur, Settings::SingleSetting::ValueKind ki
 }
 
 void initGameSeed(TApplication *app) {
-	u16 seed = rand();
+    u16 seed    = rand();
     OSTick time = OSGetTick();
 
-	gGameSeedSetting.setInt((seed * (time & 0xFFFF)) ^ time);
+    int seed32 = (seed * (time & 0xFFFF)) ^ time;
+    while (seed32 > gGameSeedSetting.getValueRange().mStop) {
+        seed32 -= gGameSeedSetting.getValueRange().mStop;
+    }
+
+    while (seed32 < gGameSeedSetting.getValueRange().mStart) {
+        seed32 += gGameSeedSetting.getValueRange().mStop;
+    }
+
+    gGameSeedSetting.setInt(seed32);
 }
 
 u32 getColorSeed() { return sColorSeed; }

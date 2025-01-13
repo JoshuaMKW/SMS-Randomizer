@@ -1,6 +1,8 @@
 #pragma once
 
+#include <BetterSMS/libs/boundbox.hxx>
 #include <BetterSMS/libs/global_vector.hxx>
+
 #include <Dolphin/types.h>
 #include <JSystem/J2D/J2DOrthoGraph.hxx>
 #include <JSystem/JDrama/JDRDisplay.hxx>
@@ -20,6 +22,7 @@ namespace Randomizer {
 
         virtual void init(TMarDirector *director)                               = 0;
         virtual bool solve(JDrama::TActor *actor, TMapCollisionData &collision) = 0;
+        virtual bool solve(TGraphWeb *web, TMapCollisionData &collision)        = 0;
     };
 
     class SMSSolver : public ISolver {
@@ -31,6 +34,7 @@ namespace Randomizer {
 
         void init(TMarDirector *director) override;
         bool solve(JDrama::TActor *actor, TMapCollisionData &collision) override;
+        bool solve(TGraphWeb *web, TMapCollisionData &collision) override;
 
         void setTarget(JDrama::TActor *actor);
         virtual size_t getSampleMax() const { return 100; }
@@ -59,6 +63,8 @@ namespace Randomizer {
 
         void solveStageObject(TMapCollisionData &collision);
         void solveExStageObject(TMapCollisionData &collision);
+
+        void solveGraphWeb(TMapCollisionData &collision, TGraphWeb *web, const BoundingBox &bb);
 
     protected:
         JDrama::TActor *mActor;

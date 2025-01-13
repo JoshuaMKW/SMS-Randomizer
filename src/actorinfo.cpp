@@ -1,42 +1,53 @@
 #include <JSystem/JGadget/UnorderedMap.hxx>
-#include <BetterSMS/libs/global_unordered_map.hxx>
 
 #include "actorinfo.hxx"
 
-BetterSMS::TGlobalUnorderedMap<JDrama::TActor *, HitActorInfo> sHitActorMap;
+struct _HitActorStruct {
+    JDrama::TActor *mActor;
+    HitActorInfo mInfo;
+};
+
+#define MAX_HIT_ACTOR_LIST_SIZE 1024
+_HitActorStruct sHitActorList[MAX_HIT_ACTOR_LIST_SIZE];
+size_t sHitActorListSize = 0;
 
 HitActorInfo &getRandomizerInfo(JDrama::TActor *actor) {
-    auto status = sHitActorMap.emplace(actor, HitActorInfo());
-    HitActorInfo &info = status.first->second;
-
-    if (status.second) {
-        info.mShouldRandomize     = true;
-        info.mShouldResizeUniform = true;
-        info.mShouldResizeXZ      = true;
-        info.mShouldResizeY       = true;
-        info.mShouldRotateXZ      = false;
-        info.mShouldRotateY       = true;
-        info.mIsChangeStageObj    = false;
-        info.mIsGroundValid       = true;
-        info.mIsRoofValid         = false;
-        info.mIsWallValid         = false;
-        info.mIsWaterValid        = false;
-        info.mIsPlayer            = false;
-        info.mIsItemObj           = false;
-        info.mIsShineObj          = false;
-        info.mIsSprayableObj      = false;
-        info.mIsSwitchObj         = false;
-        info.mIsUnderwaterValid   = false;
-        info.mIsSurfaceBound      = true;
-        info.mIsExLinear          = false;
-        info.mFromSurfaceDist     = 0;
-        info.mAdjustRotation.set(0, 0, 0);
-        info.mSurfaceNormal.set(0, 1, 0);
+    for (size_t i = 0; i < sHitActorListSize; i++) {
+        if (sHitActorList[i].mActor == actor) {
+            return sHitActorList[i].mInfo;
+        }
     }
 
-    return info;
+    SMS_ASSERT(sHitActorListSize < MAX_HIT_ACTOR_LIST_SIZE,
+               "HitActorList is full! Increase the size of the list or use less objects!");
+
+    sHitActorList[sHitActorListSize++] = {actor, HitActorInfo()};
+    _HitActorStruct &info              = sHitActorList[sHitActorListSize - 1];
+
+    info.mInfo.mShouldRandomize     = true;
+    info.mInfo.mShouldResizeUniform = true;
+    info.mInfo.mShouldResizeXZ      = true;
+    info.mInfo.mShouldResizeY       = true;
+    info.mInfo.mShouldRotateXZ      = false;
+    info.mInfo.mShouldRotateY       = true;
+    info.mInfo.mIsChangeStageObj    = false;
+    info.mInfo.mIsGroundValid       = true;
+    info.mInfo.mIsRoofValid         = false;
+    info.mInfo.mIsWallValid         = false;
+    info.mInfo.mIsWaterValid        = false;
+    info.mInfo.mIsPlayer            = false;
+    info.mInfo.mIsItemObj           = false;
+    info.mInfo.mIsShineObj          = false;
+    info.mInfo.mIsSprayableObj      = false;
+    info.mInfo.mIsSwitchObj         = false;
+    info.mInfo.mIsUnderwaterValid   = false;
+    info.mInfo.mIsSurfaceBound      = true;
+    info.mInfo.mIsExLinear          = false;
+    info.mInfo.mFromSurfaceDist     = 0;
+    info.mInfo.mAdjustRotation.set(0, 0, 0);
+    info.mInfo.mSurfaceNormal.set(0, 1, 0);
+
+    return info.mInfo;
 }
 
-void initActorInfoMap(TMarDirector *director) {
-    sHitActorMap.clear();
-}
+void initActorInfoMap(TMarDirector *director) { sHitActorListSize = 0; }

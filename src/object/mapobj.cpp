@@ -1,16 +1,16 @@
 #include <BetterSMS/libs/constmath.hxx>
-#include <System/MarNameRefGen.hxx>
 #include <Dolphin/types.h>
 #include <JSystem/JSupport/JSUMemoryStream.hxx>
+#include <System/MarNameRefGen.hxx>
 
 #include <SMS/Manager/LiveManager.hxx>
 #include <SMS/Map/MapCollisionData.hxx>
 #include <SMS/MapObj/MapObjGeneral.hxx>
-#include <SMS/MoveBG/Item.hxx>
 #include <SMS/MarioUtil/DrawUtil.hxx>
+#include <SMS/MoveBG/Item.hxx>
 #include <SMS/macros.h>
-#include <SMS/raw_fn.hxx>
 #include <SMS/rand.h>
+#include <SMS/raw_fn.hxx>
 
 #include <BetterSMS/module.hxx>
 
@@ -29,8 +29,8 @@ static void forceMTXUpdate(MActor *actor) {
 
     J3DModel *model = actor->mModel;
     if (!model)
-		return;
-    
+        return;
+
     if (model->mModelData->mDrawMtxData.mJointCount != 0) {
         /*MsMtxSetTRS__FPA4_ffffffffff(model->mJointArray[*model->mModelData->mCurrentJointIndex],
             obj->mTranslation.x, obj->mTranslation.y, obj->mTranslation.z, obj->mRotation.x,
@@ -43,9 +43,9 @@ static void forceMTXUpdate(MActor *actor) {
 }
 SMS_PATCH_BL(SMS_PORT_REGION(0x80217f90, 0, 0, 0), forceMTXUpdate);
 
-void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& actorInfo) {
+void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &actorInfo) {
     const char *objectType = actorInfo.mObjectType;
-    const char *objectKey = actorInfo.mObjectKey;
+    const char *objectKey  = actorInfo.mObjectKey;
 
     actorInfo.mShouldRandomize = Randomizer::isRandomObjects();
     actorInfo.mIsWaterValid    = false;
@@ -63,6 +63,7 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
         actorInfo.mIsWaterValid   = false;
         actorInfo.mShouldResizeY  = false;
         actorInfo.mShouldRotateXZ = false;
+        actorInfo.mScaleWeightXZ  = 3.0f;
     } else if (STR_EQUAL(objectType, "MapObjGrass")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "MapObjGrassGroup")) {
@@ -105,11 +106,11 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
         actorInfo.mIsWallValid     = true;
         actorInfo.mIsSurfaceBound  = true;
     } else if (STR_EQUAL(objectType, "Billboard")) {
-        actorInfo.mShouldRandomize   = true;
-        actorInfo.mAdjustRotation    = {0, 90, 0};
-        actorInfo.mIsGroundValid     = false;
-        actorInfo.mIsWallValid       = true;
-        actorInfo.mIsSurfaceBound    = true;
+        actorInfo.mShouldRandomize = true;
+        actorInfo.mAdjustRotation  = {0, 90, 0};
+        actorInfo.mIsGroundValid   = false;
+        actorInfo.mIsWallValid     = true;
+        actorInfo.mIsSurfaceBound  = true;
     } else if (STR_EQUAL(objectType, "MonumentShine")) {
         actorInfo.mShouldRandomize   = true;
         actorInfo.mIsGroundValid     = false;
@@ -145,7 +146,7 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
     } else if (STR_EQUAL(objectType, "WaterRecoverObj")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "WaterHitHideObj")) {
-        //actorInfo.mShouldRandomize = false;
+        // actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectKey, "PalmLeaf 0")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectKey, "PalmLeaf 1")) {
@@ -158,7 +159,7 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "FruitBasketEvent")) {
         actorInfo.mShouldResizeXZ = false;
-        actorInfo.mShouldResizeY = false;
+        actorInfo.mShouldResizeY  = false;
         if (STR_EQUAL(objectKey, "\x83\x74\x83\x8B\x81\x5B\x83\x63\x82\xA9\x82\xB2\x82\x63\xC5\x0F"
                                  "\xBF\xFE\x44")) {  // Durian Basket
             actorInfo.mIsSurfaceBound  = true;
@@ -178,11 +179,11 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
     } else if (STR_EQUAL(objectType, "WireTrap")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "CraneRotY")) {  // Ricco Harbor
-        actorInfo.mShouldResizeXZ  = false;
+        actorInfo.mShouldResizeXZ = false;
         actorInfo.mShouldResizeY  = false;
     } else if (STR_EQUAL(objectType, "RiccoLog")) {
         actorInfo.mIsGroundValid = false;
-        actorInfo.mIsWaterValid = true;
+        actorInfo.mIsWaterValid  = true;
     } else if (STR_EQUAL(objectKey, "\x89\xBA\x90\x85\x8D\xF2\x20\x30")) {  // Grille 0
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectKey, "\x89\xBA\x90\x85\x8D\xF2\x20\x31")) {  // Grille 1
@@ -274,7 +275,9 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "SakuCasino")) {
         actorInfo.mShouldRandomize = false;
-    } else if (STR_EQUAL(objectKey, "\x8A\xCF\x97\x97\x8E\xD4\x81\x69\x89\x93\x8C\x69\x81\x6A")) {  // FerrisLOD
+    } else if (STR_EQUAL(
+                   objectKey,
+                   "\x8A\xCF\x97\x97\x8E\xD4\x81\x69\x89\x93\x8C\x69\x81\x6A")) {  // FerrisLOD
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "WaterRecoverObj")) {
         actorInfo.mShouldRandomize = false;
@@ -336,15 +339,15 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
         actorInfo.mFromSurfaceDist   = 0;
     } else if (STR_EQUAL(objectType, "MuddyBoat")) {
         actorInfo.mShouldRandomize = false;
-    } else if (STR_EQUAL(objectType, "Umaibou")) {
-        actorInfo.mExSpacialScale = 4.0f;
-        actorInfo.mIsExLinear = true;
+    } else if (STR_EQUAL(objectType, "Umaibou")) {  // Spinning blocks
+        actorInfo.mExSpacialScale = 5.0f;
+        actorInfo.mIsExLinear     = true;
     } else if (STR_EQUAL(objectType, "RedCoinSwitch")) {
-        actorInfo.mIsSurfaceBound  = true;
-        actorInfo.mIsSwitchObj     = true;
+        actorInfo.mIsSurfaceBound = true;
+        actorInfo.mIsSwitchObj    = true;
     } else if (STR_EQUAL(objectType, "MapObjSwitch")) {
-        actorInfo.mIsSurfaceBound  = true;
-        actorInfo.mIsSwitchObj     = true;
+        actorInfo.mIsSurfaceBound = true;
+        actorInfo.mIsSwitchObj    = true;
     } else if (STR_EQUAL(objectType, "TurboNozzleDoor")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "NozzleBox")) {
@@ -358,14 +361,14 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
         actorInfo.mShouldRotateXZ      = false;
         actorInfo.mShouldRotateY       = true;
     } else if (STR_EQUAL(objectType, "Coin")) {
-        actorInfo.mShouldRandomize     = true;
-        actorInfo.mIsGroundValid       = true;
-        actorInfo.mIsWaterValid        = true;
-        actorInfo.mIsUnderwaterValid   = true;
-        actorInfo.mShouldResizeXZ      = false;
-        actorInfo.mShouldResizeY       = false;
-        actorInfo.mShouldRotateXZ      = false;
-        actorInfo.mShouldRotateY       = false;
+        actorInfo.mShouldRandomize   = true;
+        actorInfo.mIsGroundValid     = true;
+        actorInfo.mIsWaterValid      = true;
+        actorInfo.mIsUnderwaterValid = true;
+        actorInfo.mShouldResizeXZ    = false;
+        actorInfo.mShouldResizeY     = false;
+        actorInfo.mShouldRotateXZ    = false;
+        actorInfo.mShouldRotateY     = false;
     } else if (STR_EQUAL(objectType, "CoinBlue")) {
         actorInfo.mShouldRandomize   = true;
         actorInfo.mIsGroundValid     = true;
@@ -385,13 +388,29 @@ void initializeDefaultActorInfo(const TMarDirector& director, HitActorInfo& acto
         actorInfo.mShouldRotateXZ    = false;
         actorInfo.mShouldRotateY     = false;
     } else if (STR_EQUAL(objectType, "NPCPeach")) {
-        if (director.mAreaID == 1 && director.mEpisodeID == 1)
-            actorInfo.mShouldRandomize     = false;
+        if (director.mAreaID == 1 && director.mEpisodeID == 1) {
+            actorInfo.mShouldRandomize = false;
+        } else {
+            actorInfo.mIsGroundValid     = true;
+            actorInfo.mIsWaterValid      = false;
+            actorInfo.mIsUnderwaterValid = false;
+            actorInfo.mIsSurfaceBound    = false;
+            actorInfo.mShouldRotateXZ    = false;
+            actorInfo.mShouldRotateY     = true;
+        }
+    } else if (objectType[0] == 'N' && objectType[1] == 'P' && objectType[2] == 'C') {
+        actorInfo.mIsGroundValid     = true;
+        actorInfo.mIsWaterValid      = false;
+        actorInfo.mIsUnderwaterValid = false;
+        actorInfo.mIsSurfaceBound    = false;
+        actorInfo.mShouldRotateXZ    = false;
+        actorInfo.mShouldRotateY     = true;
     } else if (STR_EQUAL(objectType, "Mario")) {
         actorInfo.mShouldRandomize     = !SMS_isExMap__Fv();
         actorInfo.mIsGroundValid       = true;
         actorInfo.mIsWaterValid        = true;
         actorInfo.mIsUnderwaterValid   = true;
+        actorInfo.mIsSurfaceBound      = false;
         actorInfo.mShouldResizeUniform = true;
         actorInfo.mShouldResizeXZ      = false;
         actorInfo.mShouldResizeY       = false;
@@ -426,13 +445,13 @@ static u32 applyRandomStageWarps() {
         u16 stageWarpIDs[64];
         u32 warpSetFlags = 0;
 
-    #define GET_FLAG(bits, idx) static_cast<bool>((bits & (1 << (idx))) >> idx)
-    #define SET_FLAG(bits, idx, flag) static_cast<bool>(bits |= ((1 & flag) << (idx)))
+#define GET_FLAG(bits, idx)       static_cast<bool>((bits & (1 << (idx))) >> idx)
+#define SET_FLAG(bits, idx, flag) static_cast<bool>(bits |= ((1 & flag) << (idx)))
 
         for (int i = 0; i < sStageWarpsCollected; ++i) {
             while (true) {
                 u32 n = lerp<f32>(0.0f, static_cast<f32>(sStageWarpsCollected) - 0.01f,
-                                   Randomizer::randLerp());
+                                  Randomizer::randLerp());
                 if (!GET_FLAG(warpSetFlags, n)) {
                     stageWarpIDs[n] = sStageWarps[i][0x138 / 2];
                     SET_FLAG(warpSetFlags, n, true);
@@ -445,8 +464,8 @@ static u32 applyRandomStageWarps() {
             sStageWarps[i][0x138 / 2] = stageWarpIDs[i];
         }
 
-    #undef GET_FLAG
-    #undef SET_FLAG
+#undef GET_FLAG
+#undef SET_FLAG
 
         return SMSGetGameVideoHeight__Fv();
     }
@@ -466,8 +485,8 @@ SMS_PATCH_BL(SMS_PORT_REGION(0x802B8B44, 0, 0, 0), applyRandomStageWarps);
 static THitActor *collectObjectTypes(const TMarNameRefGen *gen, const char *name) {
     auto *actor = reinterpret_cast<THitActor *>(gen->getNameRef(name));
 
-    HitActorInfo &actorInfo     = getRandomizerInfo(actor);
-    actorInfo.mObjectType      = name;
+    HitActorInfo &actorInfo = getRandomizerInfo(actor);
+    actorInfo.mObjectType   = name;
 
     return actor;
 }
