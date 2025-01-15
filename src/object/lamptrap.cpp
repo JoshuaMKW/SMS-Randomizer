@@ -18,9 +18,10 @@ static void *collectLampTraps(void *vtable) {
 
     *(void **)actor = vtable;
 
-    HitActorInfo &actorInfo         = getRandomizerInfo(actor);
-    actorInfo.mFromSurfaceDist    = -2000;
+    HitActorInfo &actorInfo        = getRandomizerInfo(actor);
+    actorInfo.mFromSurfaceDist     = -2000;
     actorInfo.mShouldRandomize     = Randomizer::isRandomObjects();
+    actorInfo.mIsLiveActor         = true;
     actorInfo.mIsItemObj           = false;
     actorInfo.mIsUnderwaterValid   = true;
     actorInfo.mIsWaterValid        = true;

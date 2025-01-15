@@ -36,6 +36,8 @@ HitActorInfo &getRandomizerInfo(JDrama::TActor *actor) {
     info.mInfo.mIsWallValid         = false;
     info.mInfo.mIsWaterValid        = false;
     info.mInfo.mIsPlayer            = false;
+    info.mInfo.mIsBaseObj        = false;
+    info.mInfo.mIsLiveActor         = false;
     info.mInfo.mIsItemObj           = false;
     info.mInfo.mIsShineObj          = false;
     info.mInfo.mIsSprayableObj      = false;

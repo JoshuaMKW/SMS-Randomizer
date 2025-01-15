@@ -23,6 +23,7 @@ namespace Randomizer {
         virtual void init(TMarDirector *director)                               = 0;
         virtual bool solve(JDrama::TActor *actor, TMapCollisionData &collision) = 0;
         virtual bool solve(TGraphWeb *web, TMapCollisionData &collision)        = 0;
+        virtual bool postSolve(TMapCollisionData &collision)                    = 0;
     };
 
     class SMSSolver : public ISolver {
@@ -35,9 +36,10 @@ namespace Randomizer {
         void init(TMarDirector *director) override;
         bool solve(JDrama::TActor *actor, TMapCollisionData &collision) override;
         bool solve(TGraphWeb *web, TMapCollisionData &collision) override;
+        bool postSolve(TMapCollisionData &collision) override;
 
         void setTarget(JDrama::TActor *actor);
-        virtual size_t getSampleMax() const { return 100; }
+        virtual size_t getSampleMax() const { return SMS_isExMap__Fv() ? 100000 : 100; }
 
     protected:
         virtual bool isContextValid() const;
@@ -61,8 +63,13 @@ namespace Randomizer {
         void sampleRandomSky(TMapCollisionData &collision, TVec3f &outPos, TVec3f &outRot,
                              TVec3f &outScl);
 
+        void sampleRandomTopFloor(TMapCollisionData &collision, TVec3f &outPos, TVec3f &outRot,
+                                  TVec3f &outScl);
+
         void solveStageObject(TMapCollisionData &collision);
         void solveExStageObject(TMapCollisionData &collision);
+        void solveExItemInPost(TItem *item, TMapCollisionData &collision);
+        void solveExPost(TMapCollisionData &collision);
 
         void solveGraphWeb(TMapCollisionData &collision, TGraphWeb *web, const BoundingBox &bb);
 

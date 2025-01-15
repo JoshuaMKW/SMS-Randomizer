@@ -23,19 +23,24 @@ struct HitActorInfo {
     bool mIsSurfaceBound      : 1;
     bool mIsPlayer            : 1;
     bool mIsChangeStageObj    : 1;
+    bool mIsBaseObj           : 1;
+    bool mIsRailObj           : 1;
+    bool mIsLiveActor         : 1;
     bool mIsItemObj           : 1;
     bool mIsShineObj          : 1;
     bool mIsSprayableObj      : 1;
     bool mIsSwitchObj         : 1;
+    bool mIsNpcObj            : 1;
     bool mIsExLinear          : 1;
     const char *mObjectType;
     const char *mObjectKey;
-    s16 mFromSurfaceDist   = 0;
-    f32 mExSpacialScale    = 1.0f;
-    f32 mScaleWeightXZ     = 1.0f;
-    f32 mScaleWeightY      = 1.0f;
+    s16 mFromSurfaceDist = 0;
+    f32 mExSpacialScale  = 1.0f;
+    f32 mScaleWeightXZ   = 1.0f;
+    f32 mScaleWeightY    = 1.0f;
     TVec3s mAdjustRotation;
     TVec3f mSurfaceNormal;
 };
 
 HitActorInfo &getRandomizerInfo(JDrama::TActor *actor);
+THitActor **getHitActors(size_t &size);

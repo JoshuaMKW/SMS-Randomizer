@@ -80,4 +80,11 @@ namespace Randomizer {
         return true;
     }
 
+    bool SMSSolver::postSolve(TMapCollisionData &collision) {
+        if (SMS_isExMap__Fv()) {
+            solveExPost(collision);
+        }
+        return true;
+    }
+
 }  // namespace Randomizer

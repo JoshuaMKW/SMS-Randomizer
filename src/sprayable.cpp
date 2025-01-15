@@ -36,6 +36,8 @@ void emitHintEffectForHideObjs(TMarDirector *director) {
         if (!obj->mActorData)
             continue;
 
+        // TODO: stop emitting when hide obj is shown
+
         auto *model = obj->getModel();
         
         auto *emitter = gpMarioParticleManager->emitAndBindToMtxPtr(55, model->mBaseMtx, 0, nullptr);

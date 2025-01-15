@@ -19,13 +19,17 @@ static TBaseNPC *collectNPC(TBaseNPC *actor, const char *name) {
     __ct__11TSpineEnemyFPCc(actor, name);
 
     HitActorInfo &actorInfo         = getRandomizerInfo(actor);
+
     actorInfo.mFromSurfaceDist    = 0;
     if (id == 0x4000018 && gpMarDirector->mAreaID == 1 &&
         gpMarDirector->mEpisodeID == 1)
         actorInfo.mShouldRandomize = false;
     else
         actorInfo.mShouldRandomize = true;
+
+    actorInfo.mIsLiveActor         = true;
     actorInfo.mIsItemObj           = false;
+    actorInfo.mIsNpcObj            = true;
     actorInfo.mIsUnderwaterValid   = false;
     actorInfo.mIsWaterValid        = false;
     actorInfo.mIsGroundValid       = true;

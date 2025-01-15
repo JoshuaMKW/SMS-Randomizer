@@ -29,6 +29,9 @@ extern void emitHintEffectForHideObjs(TMarDirector *);
 
 extern void initSettings(Settings::SettingsGroup &group);
 
+extern void resetActorList(TMarDirector *director);
+extern void resetExStageGlobals(TMarDirector *director);
+extern void removeExStageStickyWalls(TMarDirector *director);
 
 extern void recalculateObjectsWhenEulerChange(TMarDirector *director);
 
@@ -45,6 +48,10 @@ static void initModule() {
     BetterSMS::Stage::addInitCallback(randomizeMirrorMode);
     BetterSMS::Player::addInitCallback(setPlayerInitialHealth);
     BetterSMS::Stage::addUpdateCallback(emitHintEffectForHideObjs);
+
+    BetterSMS::Stage::addInitCallback(resetActorList);
+    BetterSMS::Stage::addInitCallback(resetExStageGlobals);
+    BetterSMS::Stage::addUpdateCallback(removeExStageStickyWalls);
 
     // Register settings
     initSettings(gSettingsGroup);

@@ -18,6 +18,7 @@ static TSpineEnemy *collectEnemy(TSpineEnemy *actor, const char *name) {
     HitActorInfo &actorInfo     = getRandomizerInfo(actor);
     actorInfo.mFromSurfaceDist    = 0;
     actorInfo.mShouldRandomize     = Randomizer::isRandomEnemies();
+    actorInfo.mIsLiveActor         = true;
     actorInfo.mIsItemObj           = true;
     actorInfo.mIsUnderwaterValid   = false;
     actorInfo.mIsWaterValid        = false;
@@ -39,7 +40,8 @@ static void *collectEMario(void *vtable) {
 
     HitActorInfo &actorInfo         = getRandomizerInfo(actor);
     actorInfo.mFromSurfaceDist    = 0;
-    actorInfo.mShouldRandomize     = false;
+    actorInfo.mShouldRandomize      = false;
+    actorInfo.mIsLiveActor          = false;
     actorInfo.mIsItemObj           = true;
     actorInfo.mIsUnderwaterValid   = true;
     actorInfo.mIsWaterValid        = true;
@@ -59,8 +61,9 @@ static TSpineEnemy *collectWireTrap(TSpineEnemy *actor, const char *name) {
 
     HitActorInfo &actorInfo         = getRandomizerInfo(actor);
     actorInfo.mFromSurfaceDist     = 0;
-    actorInfo.mShouldRandomize     = false;
-    actorInfo.mIsItemObj           = true;
+    actorInfo.mShouldRandomize      = false;
+    actorInfo.mIsLiveActor          = true;
+    actorInfo.mIsItemObj           = false;
     actorInfo.mIsUnderwaterValid   = false;
     actorInfo.mIsWaterValid        = false;
     actorInfo.mIsGroundValid       = true;

@@ -52,7 +52,7 @@ void Randomizer::getRandomizedPosition(TVec3f &out, const TMapCollisionData &col
     f32 thetaZ = sqrtf(randLerp()) * 2 * M_PI;
 
     out.x = rX * cosf(thetaX);
-    out.y = 100000.0f;
+    out.y = 1000000.0f;
     out.z = rZ * sinf(thetaZ);
 }
 
@@ -68,25 +68,42 @@ void Randomizer::getRandomizedRotation(TVec3f &out, const HitActorInfo &actorInf
 }
 
 void Randomizer::getRandomizedScale(TVec3f &out, const HitActorInfo &actorInfo) {
+    if (out.x == 0.0f) {
+        out.x = 1.0f;
+    }
+
+    if (out.y == 0.0f) {
+        out.y = 1.0f;
+    }
+
+    if (out.z == 0.0f) {
+        out.z = 1.0f;
+    }
+
     if (actorInfo.mShouldResizeUniform) {
         const f32 scaleLerp = randLerp();
+        f32 size = lerp<f32>(0.4f, 2.5f, scaleLerp);
 
         if (actorInfo.mShouldResizeXZ) {
-            out.x = lerp<f32>(0.4f, 2.5f, scaleLerp);
-            out.z = lerp<f32>(0.4f, 2.5f, scaleLerp);
+            out.x = size;
+            out.z = size;
         }
 
-        if (actorInfo.mShouldResizeY)
-            out.y = lerp<f32>(0.4f, 2.5f, scaleLerp);
+        if (actorInfo.mShouldResizeY) {
+            out.y = size;
+        }
     } else {
         if (actorInfo.mShouldResizeXZ) {
             out.x = lerp<f32>(0.4f, 2.5f, randLerp());
             out.z = lerp<f32>(0.4f, 2.5f, randLerp());
         }
 
-        if (actorInfo.mShouldResizeY)
+        if (actorInfo.mShouldResizeY) {
             out.y = lerp<f32>(0.4f, 2.5f, randLerp());
+        }
     }
+
+    OSReport("size_y: %f; scaleWeightY: %f\n", out.y, actorInfo.mScaleWeightY);
 
     out.x *= actorInfo.mScaleWeightXZ;
     out.y *= actorInfo.mScaleWeightY;

@@ -1,5 +1,7 @@
 #include "p_common.hxx"
 
+#include <JSystem/memory.hxx>
+
 static void initWarpList(TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName>> *stageList) {
     gpApplication.mStageArchiveAry = stageList;
 
@@ -116,7 +118,7 @@ static size_t collectFloorsAtXZ(const TMapCollisionData &collision, f32 x, f32 z
         }
 
         if (Surface::isDeathRelated(*tmpOut)) {
-            OSReport("Death related!\n");
+            // OSReport("Death related!\n");
             return found;
         }
 
@@ -555,7 +557,7 @@ namespace Randomizer {
         Randomizer::srand32(key);
 
         {
-            const bool isEntity = ((mInfo.mIsItemObj || mInfo.mIsPlayer) && !mInfo.mIsShineObj);
+            const bool isEntity = (mInfo.mIsPlayer);
 
             if (isContextMakeSecretCourse(*gpMarDirector) && !isEntity)
                 solveExStageObject(*gpMapCollisionData);
@@ -689,7 +691,7 @@ namespace Randomizer {
 
     bool SMSSolver::isSampledFloorValid(TVec3f &sampledPos, const TBGCheckData &floor) {
         // Filter out warp and OOB collision
-        if (Surface::isExitRelated(floor) || floor.isIllegalData())
+        if (Surface::isExitRelated(floor) || floor.isIllegalData() || floor.mMaxHeight < -32767.0f)
             return false;
 
         if (mInfo.mIsPlayer) {

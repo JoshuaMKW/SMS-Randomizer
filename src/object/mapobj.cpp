@@ -55,7 +55,7 @@ void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &acto
     } else if (STR_EQUAL(objectType, "MapObjFlag")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "MapObjNail")) {
-        actorInfo.mExSpacialScale = 0.8f;
+        actorInfo.mExSpacialScale = 0.4f;
         actorInfo.mIsExLinear     = true;
         actorInfo.mIsGroundValid  = true;
         actorInfo.mIsWallValid    = false;
@@ -63,7 +63,8 @@ void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &acto
         actorInfo.mIsWaterValid   = false;
         actorInfo.mShouldResizeY  = false;
         actorInfo.mShouldRotateXZ = false;
-        actorInfo.mScaleWeightXZ  = 3.0f;
+        actorInfo.mScaleWeightY   = 1.0f;
+        actorInfo.mScaleWeightXZ  = 2.0f;
     } else if (STR_EQUAL(objectType, "MapObjGrass")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "MapObjGrassGroup")) {
@@ -361,6 +362,7 @@ void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &acto
         actorInfo.mShouldRotateXZ      = false;
         actorInfo.mShouldRotateY       = true;
     } else if (STR_EQUAL(objectType, "Coin")) {
+        actorInfo.mIsItemObj         = true;
         actorInfo.mShouldRandomize   = true;
         actorInfo.mIsGroundValid     = true;
         actorInfo.mIsWaterValid      = true;
@@ -370,6 +372,7 @@ void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &acto
         actorInfo.mShouldRotateXZ    = false;
         actorInfo.mShouldRotateY     = false;
     } else if (STR_EQUAL(objectType, "CoinBlue")) {
+        actorInfo.mIsItemObj         = true;
         actorInfo.mShouldRandomize   = true;
         actorInfo.mIsGroundValid     = true;
         actorInfo.mIsWaterValid      = true;
@@ -379,6 +382,7 @@ void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &acto
         actorInfo.mShouldRotateXZ    = false;
         actorInfo.mShouldRotateY     = false;
     } else if (STR_EQUAL(objectType, "CoinRed")) {
+        actorInfo.mIsItemObj         = true;
         actorInfo.mShouldRandomize   = true;
         actorInfo.mIsGroundValid     = true;
         actorInfo.mIsWaterValid      = true;
