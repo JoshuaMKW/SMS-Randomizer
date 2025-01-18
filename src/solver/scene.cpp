@@ -92,7 +92,7 @@ static f32 getAreaOfTriangle(const TVectorTriangle &triangle) {
 
 static f32 getFromGroundHeight(const HitActorInfo &actorInfo) {
     // 5% chance of the item being spawned very high (for rocket / platforming)
-    if (actorInfo.mIsItemObj && Randomizer::tryChance(5.0f)) {
+    if (actorInfo.mIsItemObj && Randomizer::tryChance32(5.0f)) {
         return actorInfo.mFromSurfaceDist + 3000.0f;
     }
     return actorInfo.mFromSurfaceDist;
@@ -103,7 +103,7 @@ static size_t collectFloorsAtXZ(const TMapCollisionData &collision, f32 x, f32 z
                                 f32 *yOut) {
     size_t found = 0;
 
-    f32 checkY = 100000.0f;
+    f32 checkY = 1000000.0f;
     while (found < capacity) {
         const TBGCheckData *tmpOut;
         const f32 groundY = collision.checkGround(x, checkY, z, 0, &tmpOut);
@@ -151,27 +151,10 @@ static size_t collectTrisAtBlock(TBGCheckList *list, size_t max, const TBGCheckD
     return wallsFound;
 }
 
-bool isContextMakeSecretCourse(const TMarDirector &director) {
-    if (!SMS_isExMap__Fv())
-        return false;
-
-    // Filter out whole courses
-    if (director.mAreaID < 31)
-        return false;
-
-    if (director.mAreaID == 44)  // Noki Bottle
-        return false;
-
-    if (director.mAreaID == 52)  // Corona Mountain
-        return false;
-
-    return true;
-}
-
 namespace Randomizer {
 
     void SMSSolver::sampleRandomFloor(TMapCollisionData &collision, TVec3f &outT, TVec3f &outR,
-                                      TVec3f &outS) {
+                                      TVec3f &outS, bool forceTop) {
         const bool isUnderwaterValid = mInfo.mIsUnderwaterValid;
         const bool isWaterValid      = mInfo.mIsWaterValid;
         const bool isGroundValid     = mInfo.mIsGroundValid;
@@ -192,7 +175,7 @@ namespace Randomizer {
             if (floorsFound == 0)
                 continue;
 
-            const int decidedFloor    = floorsFound > 1 ? lerp<int>(0, floorsFound, randLerp()) : 0;
+            const int decidedFloor    = floorsFound > 1 && !forceTop ? lerp<int>(0, floorsFound, randLerp32()) : 0;
             const TBGCheckData *floor = floors[decidedFloor];
             target.y                  = groundY[decidedFloor];
 
@@ -224,6 +207,11 @@ namespace Randomizer {
 
             if (Randomizer::isRandomScale()) {
                 getRandomizedScale(outS, mInfo);
+            } else {
+                outS = mActor->mScale;
+                outS.x *= mInfo.mScaleWeightXZ;
+                outS.y *= mInfo.mScaleWeightY;
+                outS.z *= mInfo.mScaleWeightXZ;
             }
             break;
         }
@@ -256,7 +244,7 @@ namespace Randomizer {
             }
 
             const int decidedWall =
-                staticFound > 1 ? lerp<f32>(0.0f, staticFound - 0.01f, randLerp()) : 0;
+                staticFound > 1 ? lerp<f32>(0.0f, staticFound - 0.01f, randLerp32()) : 0;
             const TBGCheckData *wall = staticWalls[decidedWall];
 
             TVectorTriangle triangle(wall->mVertices[0], wall->mVertices[1], wall->mVertices[2]);
@@ -304,6 +292,11 @@ namespace Randomizer {
 
             if (Randomizer::isRandomScale()) {
                 getRandomizedScale(outS, mInfo);
+            } else {
+                outS = mActor->mScale;
+                outS.x *= mInfo.mScaleWeightXZ;
+                outS.y *= mInfo.mScaleWeightY;
+                outS.z *= mInfo.mScaleWeightXZ;
             }
             break;
         }
@@ -336,7 +329,7 @@ namespace Randomizer {
             }
 
             const int decidedRoof =
-                staticFound > 1 ? lerp<f32>(0.0f, staticFound - 0.01f, randLerp()) : 0;
+                staticFound > 1 ? lerp<f32>(0.0f, staticFound - 0.01f, randLerp32()) : 0;
             const TBGCheckData *roof = staticRoofs[decidedRoof];
 
             TVectorTriangle triangle(roof->mVertices[0], roof->mVertices[1], roof->mVertices[2]);
@@ -378,6 +371,11 @@ namespace Randomizer {
 
             if (Randomizer::isRandomScale()) {
                 getRandomizedScale(outS, mInfo);
+            } else {
+                outS = mActor->mScale;
+                outS.x *= mInfo.mScaleWeightXZ;
+                outS.y *= mInfo.mScaleWeightY;
+                outS.z *= mInfo.mScaleWeightXZ;
             }
             break;
         }
@@ -407,10 +405,15 @@ namespace Randomizer {
             getRandomizedRotation(outR, mInfo);
             if (Randomizer::isRandomScale()) {
                 getRandomizedScale(outS, mInfo);
+            } else {
+                outS = mActor->mScale;
+                outS.x *= mInfo.mScaleWeightXZ;
+                outS.y *= mInfo.mScaleWeightY;
+                outS.z *= mInfo.mScaleWeightXZ;
             }
 
             outT = target;
-            outT.y += lerp(200.0f, 3000.0f, randLerp());
+            outT.y += lerp(200.0f, 3000.0f, randLerp32());
             break;
         }
     }
@@ -421,17 +424,6 @@ namespace Randomizer {
 
         if (!isCurrentActorValid())
             return false;
-
-        if (SMS_isExMap__Fv()) {
-            if (!Randomizer::isRandomExStage())
-                return false;
-
-            constexpr const char *SkyIslandKey = "\x8B\xF3\x93\x87";
-            if (STR_EQUAL(mActor->mKeyName, SkyIslandKey)) {
-                sSecretCourseStartPlatform = mActor->mTranslation;
-                return false;
-            }
-        }
 
         switch (gpMarDirector->mAreaID) {
         case 1: {  // Delfino Plaza
@@ -493,12 +485,13 @@ namespace Randomizer {
         else
             sSecretCourseFluddless = !TFlagManager::smInstance->getShineFlag(shineID);
 
-        sStageSeed = Randomizer::levelScramble(Randomizer::getGameSeed(), 0x12345678, true);
+        sStageSeed = Randomizer::levelScramble(Randomizer::getGameSeed(), MAGIC_DIFFUSE, true);
 
         if (sSecretCourseFluddless)
-            sStageSeed ^= 0xDEADBEEF;
+            sStageSeed = Randomizer::diffuse_u32(sStageSeed);
 
         Randomizer::srand32(sStageSeed);
+        Randomizer::srand64(Randomizer::diffuse_u64(sStageSeed));
 
         sIsMapLoaded = false;
 
@@ -518,115 +511,14 @@ namespace Randomizer {
         sSecretCourseSwitchesLoaded = 0;
 
         // 30% chance of the secret course being a vertical stage.
-        sSecretCourseVertical = Randomizer::tryChance(30.0f);
+        sSecretCourseVertical = Randomizer::tryChance32(30.0f);
 
         sGelatoWarp = nullptr;
 
         resetStageWarpInfo();
         resetHitHideObjs();
-    }
 
-    bool SMSSolver::solve(JDrama::TActor *actor, TMapCollisionData &collision) {
-        setTarget(actor);
-
-        if (gpMarDirector->mAreaID == 4) {  // Collect Castle Warp
-            if (STR_EQUAL(mInfo.mObjectKey, "\x83\x58\x83\x65\x81\x5B\x83\x57\x90\xD8\x91\xD6"
-                                            "\x81\x69\x8D\xBB\x82\xCC\x8F\xE9\x81\x6A")) {
-                sGelatoWarp = mActor;
-            }
-        }
-
-        if (!mInfo.mShouldRandomize)
-            return true;
-
-        if (!isContextValid())
-            return false;
-
-        if (gpMarDirector->mAreaID == 1) {  // Delfino Plaza
-            if (strcmp(mActor->mKeyName, "GateToRicco") == 0) {
-                mInfo.mFromSurfaceDist = 100.0f;
-            }
-        }
-
-        const u32 gameSeed = Randomizer::getGameSeed();
-        u32 key            = (mActor->mKeyCode * 0x41C64E6D + 0x3039) ^ gameSeed;
-
-        if (sSecretCourseFluddless)
-            key *= 0x51678391;
-
-        Randomizer::srand32(key);
-
-        {
-            const bool isEntity = (mInfo.mIsPlayer);
-
-            if (isContextMakeSecretCourse(*gpMarDirector) && !isEntity)
-                solveExStageObject(*gpMapCollisionData);
-            else
-                solveStageObject(*gpMapCollisionData);
-        }
-
-        if (STR_EQUAL(mInfo.mObjectType, "WaterHitHideObj") ||
-            STR_EQUAL(mInfo.mObjectType, "WaterHitPictureHideObj")) {
-            addHitHideObj(reinterpret_cast<TMapObjBase *>(mActor));
-        }
-
-        if (STR_EQUAL(mActor->mKeyName, "normalvariant3") ||
-            (STR_EQUAL(mActor->mKeyName, "WoodBlockLarge 0") && gpMarDirector->mAreaID == 32)) {
-            sSecretCourseHasEndPlatform = true;
-            sSecretCourseShinePos       = mActor->mTranslation;
-            sSecretCourseShinePos.y += 200.0f * scaleLinearAtAnchor(mActor->mScale.y, 1.5f, 1.0f);
-        }
-
-        if (gpMarDirector->mAreaID == 4) {
-            if (STR_EQUAL(mInfo.mObjectType, "SandCastle") && sGelatoWarp) {
-                sGelatoWarp->mTranslation = mActor->mTranslation;
-                sGelatoWarp->mRotation    = mActor->mRotation;
-            }
-        }
-
-        Randomizer::srand32(gameSeed);
-
-        getRandomizerInfo(mActor) = mInfo;
-
-        return true;
-    }
-
-#define FLT_MAX 3.402823466e+38F
-
-    bool SMSSolver::solve(TGraphWeb *web, TMapCollisionData &collision) {
-        BoundingBox web_bb;
-
-        TVec3f min = {FLT_MAX, FLT_MAX, FLT_MAX};
-        TVec3f max = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
-
-        for (size_t i = 0; i < web->mNodeCount; ++i) {
-            TVec3f pos = web->indexToPoint(i);
-            min.x      = Min(min.x, pos.x);
-            min.y      = Min(min.y, pos.y);
-            min.z      = Min(min.z, pos.z);
-            max.x      = Max(max.x, pos.x);
-            max.y      = Max(max.y, pos.y);
-            max.z      = Max(max.z, pos.z);
-        }
-
-        web_bb.center = {(min.x + max.x) / 2.0f, (min.y + max.y) / 2.0f, (min.z + max.z) / 2.0f};
-
-        web_bb.size = {(max.x - min.x) / 2.0f, (max.y - min.y) / 2.0f, (max.z - min.z) / 2.0f};
-
-        web_bb.rotation = {0.0f, 0.0f, 0.0f};
-
-        // TODO: Implement web solver to understand randomized map state
-        // probably have this run at the end of the stage generation
-        solveGraphWeb(collision, web, web_bb);
-
-        return true;
-    }
-
-    void SMSSolver::setTarget(JDrama::TActor *actor) {
-        mActor           = actor;
-        mInfo            = getRandomizerInfo(actor);
-        mInfo.mObjectKey = mActor->mKeyName;
-        initializeDefaultActorInfo(*gpMarDirector, mInfo);
+        gpMapCollisionData = nullptr;
     }
 
     void SMSSolver::adjustSampledFloor(TVec3f &sampledPos, const TBGCheckData &floor) {
@@ -654,11 +546,11 @@ namespace Randomizer {
                 }
 
                 // Underwater spawn
-                if (mInfo.mIsUnderwaterValid && tryChance(70.0f)) {
+                if (mInfo.mIsUnderwaterValid && tryChance32(70.0f)) {
                     const f32 belowGroundY = gpMapCollisionData->checkGround(
                         sampledPos.x, sampledPos.y - 10.0f, sampledPos.z, 0, &data);
                     sampledPos.y = lerp<f32>(belowGroundY + mInfo.mFromSurfaceDist,
-                                             sampledPos.y - 10.0f, randLerp());
+                                             sampledPos.y - 10.0f, randLerp32());
                     return;
                 }
 
@@ -668,11 +560,11 @@ namespace Randomizer {
             }
             default: {
                 // Underwater spawn
-                if (mInfo.mIsUnderwaterValid && tryChance(70.0f)) {
+                if (mInfo.mIsUnderwaterValid && tryChance32(70.0f)) {
                     const f32 belowGroundY = gpMapCollisionData->checkGround(
                         sampledPos.x, sampledPos.y - 10.0f, sampledPos.z, 0, &data);
                     sampledPos.y = lerp<f32>(belowGroundY + mInfo.mFromSurfaceDist,
-                                             sampledPos.y - 10.0f, randLerp());
+                                             sampledPos.y - 10.0f, randLerp32());
                     return;
                 }
                 // Surface spawn
@@ -991,24 +883,36 @@ namespace Randomizer {
     }
 
     void SMSSolver::solveStageObject(TMapCollisionData &collision) {
+        if (gpMarDirector->mAreaID == 4) {  // Collect Castle Warp
+            if (STR_EQUAL(mInfo.mObjectKey, "\x83\x58\x83\x65\x81\x5B\x83\x57\x90\xD8\x91\xD6"
+                                            "\x81\x69\x8D\xBB\x82\xCC\x8F\xE9\x81\x6A")) {
+                sGelatoWarp = mActor;
+            }
+        }
+
         PlaneSelection selection = PlaneSelection::SKY;
 
         // Select a plane type based off of flags and chances
         if (mInfo.mIsGroundValid || mInfo.mIsWaterValid || mInfo.mIsUnderwaterValid) {
             selection = PlaneSelection::FLOOR;
-            if (mInfo.mIsWallValid && tryChance(50.0f))
+            if (mInfo.mIsWallValid && tryChance32(50.0f))
                 selection = PlaneSelection::WALL;
-            if (mInfo.mIsRoofValid && tryChance(25.0f))
+            if (mInfo.mIsRoofValid && tryChance32(25.0f))
                 selection = PlaneSelection::ROOF;
         } else if (mInfo.mIsWallValid) {
             selection = PlaneSelection::WALL;
-            if (mInfo.mIsRoofValid && tryChance(35.0f))
+            if (mInfo.mIsRoofValid && tryChance32(35.0f))
                 selection = PlaneSelection::ROOF;
         } else if (mInfo.mIsRoofValid) {
             selection = PlaneSelection::ROOF;
         }
 
         mInfo.mSurfaceNormal = TVec3f::up();
+
+        OSReport("Is Collision Null: %d\n", gpMapCollisionData == nullptr);
+        if (!gpMapCollisionData) {
+            return; // :(
+        }
 
         switch (selection) {
         default:
@@ -1024,6 +928,13 @@ namespace Randomizer {
         case PlaneSelection::SKY:
             sampleRandomSky(collision, mActor->mTranslation, mActor->mRotation, mActor->mScale);
             break;
+        }
+        
+        if (gpMarDirector->mAreaID == 4) {
+            if (STR_EQUAL(mInfo.mObjectType, "SandCastle") && sGelatoWarp) {
+                sGelatoWarp->mTranslation = mActor->mTranslation;
+                sGelatoWarp->mRotation    = mActor->mRotation;
+            }
         }
     }
 

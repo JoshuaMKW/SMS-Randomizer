@@ -54,6 +54,26 @@ void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &acto
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "MapObjFlag")) {
         actorInfo.mShouldRandomize = false;
+    } else if (STR_EQUAL(objectType, "MapObjGrowTree")) {
+        actorInfo.mShouldResizeY  = true;
+        actorInfo.mShouldResizeXZ = false;
+        actorInfo.mShouldRotateXZ = false;
+    } else if (STR_EQUAL(objectType, "BananaTree")) {
+        actorInfo.mShouldResizeY  = true;
+        actorInfo.mShouldResizeXZ = false;
+        actorInfo.mShouldRotateXZ = false;
+    } else if (STR_EQUAL(objectType, "FruitTree")) {
+        actorInfo.mShouldResizeY  = true;
+        actorInfo.mShouldResizeXZ = false;
+        actorInfo.mShouldRotateXZ = false;
+    } else if (STR_EQUAL(objectType, "PalmOugi")) {
+        actorInfo.mShouldResizeY  = true;
+        actorInfo.mShouldResizeXZ = false;
+        actorInfo.mShouldRotateXZ = false;
+    } else if (STR_EQUAL(objectType, "PalmSago")) {
+        actorInfo.mShouldResizeY  = true;
+        actorInfo.mShouldResizeXZ = false;
+        actorInfo.mShouldRotateXZ = false;
     } else if (STR_EQUAL(objectType, "MapObjNail")) {
         actorInfo.mExSpacialScale = 0.4f;
         actorInfo.mIsExLinear     = true;
@@ -65,6 +85,15 @@ void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &acto
         actorInfo.mShouldRotateXZ = false;
         actorInfo.mScaleWeightY   = 1.0f;
         actorInfo.mScaleWeightXZ  = 2.0f;
+    } else if (STR_EQUAL(objectType, "MapObjRailBlock")) {
+        actorInfo.mExSpacialScale = 2.0f;
+        actorInfo.mIsExLinear     = true;
+        actorInfo.mIsGroundValid  = true;
+        actorInfo.mIsWallValid    = false;
+        actorInfo.mIsRoofValid    = false;
+        actorInfo.mIsWaterValid   = false;
+        actorInfo.mShouldResizeY  = false;
+        actorInfo.mShouldRotateXZ = false;
     } else if (STR_EQUAL(objectType, "MapObjGrass")) {
         actorInfo.mShouldRandomize = false;
     } else if (STR_EQUAL(objectType, "MapObjGrassGroup")) {
@@ -343,6 +372,30 @@ void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &acto
     } else if (STR_EQUAL(objectType, "Umaibou")) {  // Spinning blocks
         actorInfo.mExSpacialScale = 5.0f;
         actorInfo.mIsExLinear     = true;
+    } else if (STR_EQUAL(objectType, "SandBlock")) {
+        actorInfo.mExSpacialScale = 0.5f;
+        actorInfo.mScaleWeightXZ  = 1.6f;
+        actorInfo.mScaleWeightY   = 1.4f;
+        actorInfo.mIsExLinear     = false;
+    } else if (STR_EQUAL(objectType, "RollBlock")) {
+        actorInfo.mExSpacialScale = 1.3f;
+        actorInfo.mIsExLinear     = true;
+    } else if (STR_EQUAL(objectType, "WoodBlock")) {
+        actorInfo.mExSpacialScale = 0.6f;
+        actorInfo.mScaleWeightXZ  = 1.5f;
+        actorInfo.mScaleWeightY   = 1.5f;
+        actorInfo.mIsExLinear     = false;
+    } else if (STR_EQUAL(objectType, "WatermelonBlock")) {
+        actorInfo.mExSpacialScale = 0.55f;
+        actorInfo.mIsExLinear     = false;
+    } else if (STR_EQUAL(objectType, "BrickBlock")) {
+        actorInfo.mExSpacialScale = 0.6f;
+        actorInfo.mScaleWeightXZ  = 1.5f;
+        actorInfo.mScaleWeightY   = 1.5f;
+        actorInfo.mIsExLinear     = true;
+    } else if (STR_EQUAL(objectType, "LeanBlock")) {
+        actorInfo.mExSpacialScale = 1.0f;
+        actorInfo.mIsExLinear     = true;
     } else if (STR_EQUAL(objectType, "RedCoinSwitch")) {
         actorInfo.mIsSurfaceBound = true;
         actorInfo.mIsSwitchObj    = true;
@@ -410,7 +463,7 @@ void initializeDefaultActorInfo(const TMarDirector &director, HitActorInfo &acto
         actorInfo.mShouldRotateXZ    = false;
         actorInfo.mShouldRotateY     = true;
     } else if (STR_EQUAL(objectType, "Mario")) {
-        actorInfo.mShouldRandomize     = !SMS_isExMap__Fv();
+        actorInfo.mShouldRandomize     = true;
         actorInfo.mIsGroundValid       = true;
         actorInfo.mIsWaterValid        = true;
         actorInfo.mIsUnderwaterValid   = true;
@@ -443,7 +496,12 @@ static u32 applyRandomStageWarps() {
     if (warpSetting == RandomWarpSetting::OFF)
         return SMSGetGameVideoHeight__Fv();
 
-    Randomizer::srand32(Randomizer::levelScramble(Randomizer::getGameSeed(), 0x51324217, false));
+    // Backup next seed for later
+    u32 trueSeed = Randomizer::rand32();
+
+    // Set up constant seed so warps are consistent between episodes
+    Randomizer::srand32(Randomizer::levelScramble(
+        Randomizer::getGameSeed(), (((u32)MAGIC_DIFFUSE * (u32)MAGIC_DIFFUSE) & 0xFFFFFFFF) | 0b1, false));
 
     if (warpSetting == RandomWarpSetting::LOCAL) {
         u16 stageWarpIDs[64];
@@ -454,8 +512,7 @@ static u32 applyRandomStageWarps() {
 
         for (int i = 0; i < sStageWarpsCollected; ++i) {
             while (true) {
-                u32 n = lerp<f32>(0.0f, static_cast<f32>(sStageWarpsCollected) - 0.01f,
-                                  Randomizer::randLerp());
+                u32 n = Randomizer::rand32(0, sStageWarpsCollected - 1);
                 if (!GET_FLAG(warpSetFlags, n)) {
                     stageWarpIDs[n] = sStageWarps[i][0x138 / 2];
                     SET_FLAG(warpSetFlags, n, true);
@@ -471,6 +528,9 @@ static u32 applyRandomStageWarps() {
 #undef GET_FLAG
 #undef SET_FLAG
 
+        // Restore seed
+        Randomizer::srand32(trueSeed);
+
         return SMSGetGameVideoHeight__Fv();
     }
 
@@ -478,9 +538,12 @@ static u32 applyRandomStageWarps() {
 
     const auto &warpIDs = Randomizer::getWarpIDWhiteList();
     for (int i = 0; i < sStageWarpsCollected; ++i) {
-        u32 n = lerp<f32>(0.0f, static_cast<f32>(warpIDs.size()) - 0.01f, Randomizer::randLerp());
+        u32 n = lerp<f32>(0.0f, static_cast<f32>(warpIDs.size()) - 0.01f, Randomizer::randLerp32());
         sStageWarps[i][0x138 / 2] = warpIDs.at(n);
     }
+
+    // Restore seed
+    Randomizer::srand32(trueSeed);
 
     return SMSGetGameVideoHeight__Fv();
 }

@@ -36,6 +36,7 @@ extern Randomizer::ISolver *sDefaultSolver;
 
 extern TVec3f sSecretCourseStart;
 extern TVec3f sSecretCourseStartPlatform;
+extern TVec3f sSecretCourseEndPlatform;
 extern TVec3f sSecretCourseCurrentPos;
 extern TVec3f sSecretCourseLastPos;
 extern TVec3f sSecretCourseCurrentRot;

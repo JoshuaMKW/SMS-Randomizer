@@ -26,7 +26,7 @@ extern u32 getColorSeed();
 
 static void randomizeGXTevColor(u8 tevstage, GXColor *color) {
     if (Randomizer::isRandomColors()) {
-        const u32 seed = getColorSeed();
+        const u32 seed = Randomizer::getGameSeed() * 0x41C64E6D + 0x3039;
         *(u32 *)color ^= (seed * 0x41C64E6D) & 0xFFFFFF00;
     }
 

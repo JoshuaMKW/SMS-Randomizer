@@ -41,8 +41,11 @@ namespace Randomizer {
         void setTarget(JDrama::TActor *actor);
         virtual size_t getSampleMax() const { return SMS_isExMap__Fv() ? 100000 : 100; }
 
+        virtual bool isSecretCourseSimple() const;
+
     protected:
         virtual bool isContextValid() const;
+        virtual bool isContextMakeSecretCourse(const TMarDirector &director) const;
 
         virtual bool isSampledFloorValid(TVec3f &sampledPos, const TBGCheckData &floor);
         virtual bool isSampledWallValid(TVec3f &sampledPos, const TBGCheckData &wall);
@@ -55,7 +58,7 @@ namespace Randomizer {
 
         bool isCurrentActorValid() const;
         void sampleRandomFloor(TMapCollisionData &collision, TVec3f &outPos, TVec3f &outRot,
-                               TVec3f &outScl);
+                               TVec3f &outScl, bool forceTop = false);
         void sampleRandomWall(TMapCollisionData &collision, TVec3f &outPos, TVec3f &outRot,
                               TVec3f &outScl);
         void sampleRandomRoof(TMapCollisionData &collision, TVec3f &outPos, TVec3f &outRot,

@@ -9,6 +9,9 @@ Settings::SettingsGroup gSettingsGroup(1, 0, Settings::Priority::MODE);
 static int sGameSeedValue;
 Settings::IntSetting gGameSeedSetting("Game Seed", &sGameSeedValue);
 
+static bool sSuperRandomFlag = false;
+Settings::SwitchSetting gSuperRandomSettings("Super Random", &sSuperRandomFlag);
+
 static bool sRandomizeCollectiblesFlag;
 Settings::SwitchSetting gRandomizeCollectiblesSetting("Randomize Collectibles",
                                                       &sRandomizeCollectiblesFlag);
@@ -45,6 +48,7 @@ RandomMirrorModeSetting gRandomizeMirrorModeSetting("Randomize Mirror Mode");
 void initSettings(Settings::SettingsGroup& group) {
     gGameSeedSetting.setValueRange({0, 999999999, 1});
     group.addSetting(&gGameSeedSetting);
+    group.addSetting(&gSuperRandomSettings);
     group.addSetting(&gRandomizeCollectiblesSetting);
     group.addSetting(&gRandomizeObjectsSetting);
     group.addSetting(&gRandomizeEnemiesSetting);
@@ -58,7 +62,7 @@ void initSettings(Settings::SettingsGroup& group) {
 }
 
 namespace Randomizer {
-    u32 getGameSeed() { return gGameSeedSetting.getInt(); }
+    bool isSuperRandom() { return gSuperRandomSettings.getBool(); }
     bool isRandomCollectibles() { return gRandomizeCollectiblesSetting.getBool(); }
     bool isRandomObjects() { return gRandomizeObjectsSetting.getBool(); }
     bool isRandomEnemies() { return gRandomizeEnemiesSetting.getBool(); }
@@ -70,6 +74,15 @@ namespace Randomizer {
     bool isRandomMirrorMode() { return gRandomizeMirrorModeSetting.getBool(); }
     RandomWarpSetting::State getRandomWarpsState() {
         return static_cast<RandomWarpSetting::State>(gRandomizeWarpsSetting.getInt());
+    }
+    u32 getGameSeed() {
+        if (isSuperRandom()) {
+            u32 gameSeed = gGameSeedSetting.getInt();
+            u32 newSeed  = gameSeed + 1;
+            gGameSeedSetting.setInt(newSeed);
+            return newSeed;
+        }
+        return gGameSeedSetting.getInt();
     }
 }
 

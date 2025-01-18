@@ -15,10 +15,10 @@
 #include "settings.hxx"
 
 static TMario *collectPlayer(TMario *actor, const char *name) {
-    __ct__9THitActorFPCc(actor, name);
-
     HitActorInfo &actorInfo = getRandomizerInfo(actor);
-    actorInfo.mIsPlayer    = true;
+    actorInfo.mIsPlayer     = true;
+
+    __ct__9THitActorFPCc(actor, name);
 
     return actor;
 }

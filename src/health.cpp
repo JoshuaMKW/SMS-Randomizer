@@ -11,12 +11,12 @@ void setPlayerInitialHealth(TMario* player, bool isMario) {
     if (!isMario || !Randomizer::isRandomHPDamage())
         return;
 
-    player->mHealth = static_cast<u16>(lerp<f32>(1.0f, 8.99f, Randomizer::randLerp()));
+    player->mHealth = static_cast<u16>(lerp<f32>(1.0f, 8.99f, Randomizer::randLerp32()));
 }
 
 static void randomizeDecHP(TMario *player, int loss) {
     if (Randomizer::isRandomHPDamage()) {
-        loss = static_cast<int>(lerp<f32>(1.0f, 7.99f, Randomizer::randLerp()));
+        loss = static_cast<int>(lerp<f32>(1.0f, 7.99f, Randomizer::randLerp32()));
     }
     player->decHP(loss);
 }
